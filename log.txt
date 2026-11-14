@@ -446,3 +446,45 @@ Assumed / Unverified: not seen in a browser by me (layout, effects, countdown, f
 Open Issues: human browser test of the simulation; commit and push; screenshots and demo video (a simulated EVA with a calamity is a strong demo).
 Commit Point: yes, suggested message: "P6b: live EVA simulation with calamities, mission control decisions and real-time replanning"
 Next: human test; fix what the browser shows.
+
+## [2026-11-14T23:44:00+05:30] P6c: Gale tab no longer shows EVA oxygen features; photo vs relief base fixed
+
+Phase: P6c | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: fix two problems the human reported after trying the app: "oxygen in Gale breaks as we select routes" and "the optical image overlaps the relief image by default".
+AI Generated: Region flag eva:false for the Gale tab in web/src/main.ts (no oxygen reserve, science stops, return lens, verdict or live simulation; a regional traverse summary instead, renderTraverse in stats.ts; slope lens by default); eva option in setupRouting (ui.ts) that turns off the return overlay and the turn-back marker; setBase in map.ts takes the CTX coverage and decides what shows under the photo; photo coverage read from ctx.json; CSS for the regional verdict.
+Human Did: tried the app and reported both problems.
+Concepts Taught: why a tool has a valid scale range (a 15 km walk at 1.85 km per cell needs hundreds of litres of oxygen against a 30 L suit reserve, so the verdict, gauges and return range carry no information there).
+Decisions: reproduced the first problem by running the Gale terrain through the same code: a route 8 cells (about 15 km) long gave out 382.6 L, back 342.5 L, round trip 725 L against the 30 L reserve; at 1.85 km per cell the return range is dimmed everywhere except the base cell. Rather than invent a bigger reserve, oxygen features are off at that scale and the app says where to find them. Photo base: the Gale CTX mosaic covers 23.9%, so it is not the default there; picking it dims the relief to 40% behind it; on the EVA site (100% coverage) the relief is hidden under the photo so nothing shows through. The "overlap" cause is my reading: I have not seen the user's screen.
+Verified: tsc clean, vitest 58/58, production build passes.
+Assumed / Unverified: not seen in a browser by me; I assumed the overlap the human saw was the partial photo mosaic on the Gale tab.
+Open Issues: human re-test of both tabs; commit and push.
+Commit Point: yes, suggested message: "P6c: Gale tab regional-only (no oxygen features); CTX base only default where it covers the map"
+Next: human re-test.
+
+## [2026-11-15T01:12:00+05:30] P6d: mission brief from Earth, unplanned mid-route find, inspection planning against the oxygen budget
+
+Phase: P6d | Tool: Claude Code | Model: claude-opus-5-5 (planning and engine), claude-sonnet-5-5 (UI wiring)
+Goal: the human asked for a mission from Earth (find or observe something) and, mid-walk, something worth a look that the astronaut can plan a checkpoint for, so the astronaut plans resources for a safe inspection and return.
+AI Generated: web/src/sim/engine.ts (stop-based planner evalStops: walk to each stop, work, walk home, science cut to fit; phases detour and inspect; Find state; scheduleFind / discover with its own seeded random stream; findOptions, inspectBudgetS, recommendFind, answerFind; options() refactored onto the planner; shared finishStep); engine.test.ts (11 new tests); view.ts (mission brief with Begin button, objectives checklist, find planning card with inspection-time slider, oxygen budget bar, 60 s countdown, find marker on the map, option paths drawn through the find, end-of-mission find KPI and outcomes); main.ts (find checkbox, objective looked up from waypoints.csv by distance to the goal); style.css; README, qa.md, AGENTS.md.
+Human Did: set the direction (earth mission, mid-route find, inspection checkpoint with resource planning, 2D first).
+Concepts Taught: modelling a route as stops plus work time (one planner for every option); fixed versus flexible time in a budget; budget as the solved margin equation (longest inspection that keeps the 20% line).
+Decisions: the find is a labelled SCENARIO target (three generic descriptions), placed 80-140 m from the route (true distance to the route ahead, after the first version measured from one anchor cell and could lie on the route), 25-45% into the outbound walk. Inspection time is committed once chosen; science time is the flexible part. Recommendation order (display rule, not NASA): inspect and keep full science and the 20% margin, else skip, else inspect and return, else abort. Fixed an existing bug: after choosing "continue" during science the path index was reset to 0, which put the astronaut back at the route start; working phases now keep position in a one-cell path (test added). Behaviour change: a plan with 0 minutes of science is now feasible (before it was always infeasible). The find uses its own random stream so existing seeds give the same calamities.
+Verified: tsc clean; vitest 69/69 (58 old, 11 new, hand-checkable numbers on the flat grid); production build passes; engine run on the real 10 m boxwork terrain at 30 L and 120 L (find placed on walkable ground, phases detour > inspect > inbound > returned, oxygen = rate x time).
+Assumed / Unverified: not seen in a browser by me (brief layout, slider, budget bar, marker, countdown). Finding from the real-terrain run: the app's own example walk (base about 27 cells from the ridge) needs about 99 L, so at the 30 L default the planner correctly offers no spare time; at 120 L the plan still leaves less than the 20% margin, so inspect-then-return is recommended. The human may want a closer example base or a larger default reserve for the demo.
+Open Issues: human browser test; demo tuning (reserve, base distance); commit and push.
+Commit Point: yes, suggested message: "P6d: mission brief, unplanned find and inspection planning against the oxygen budget"
+Next: human test; then radio line-of-sight and a limiting-factor verdict if time.
+
+## [2026-11-15T01:50:00+05:30] P6e: the find is placed by the user; every leg of the inspection plan is priced and shown
+
+Phase: P6e | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: the human said the random find was not controllable and asked whether the planner checks the route to the source and destination from the find plus the trip back.
+AI Generated: engine.ts (armFind with validation, reveal when within 150 m, replaces the random find; per-leg costs, an at-the-find check of oxygen after inspecting versus the way straight home, unreachable options shown instead of dropped); view.ts (find mode setting, Place-on-map button with crosshair, snap to walkable ground within 60 m, violet armed marker, leg table with a toggle, escape check line); main.ts (select: I place it / Random / None, default place); style.css; README, qa.md; engine.test.ts (5 new tests).
+Human Did: asked for controllability and the reachability check.
+Concepts Taught: arming an event and triggering it by proximity instead of by time; showing the cost of each leg so a total can be audited.
+Decisions: reveal radius 150 m is a scenario setting, not NASA data; a placed find may lie on the route (zero detour) because the user chooses; it must be walkable, reachable and 30 m from base and destination; one find per run, movable until noticed; label picked from the three generic descriptions by cell index (repeatable).
+Verified: tsc clean; vitest 74/74 (placed find revealed at the 150 m line and never twice, replaces random one, rejects bad places, leg times sum to walking time and oxygen = rate x time, at-find home cost matches an independent A*, walled-off find shown as unreachable); production build passes.
+Assumed / Unverified: not seen in a browser by me (map click placement, crosshair, marker colour, leg table layout). Whether routing.lock(true) fully stops the planning click handler while placing is untested.
+Open Issues: human browser test; commit and push.
+Commit Point: yes, suggested message: "P6e: user-placed find and per-leg path costs in the inspection planner"
+Next: human test.

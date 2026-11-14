@@ -18,7 +18,18 @@ export const SCENARIO = {
   dustSpeedFactor: 0.6, // dust storm: walking speed x0.6 (poor visibility)
   injurySpeedFactor: 0.5, // injury: walking speed x0.5
   speDeadlineMin: 30, // solar particle event warning: be back at base within 30 min
+  findOffsetMinM: 80, // unplanned find: distance from the planned route, min
+  findOffsetMaxM: 140, // ... and max
+  findMaxInspectMin: 45, // longest inspection the planner offers
+  findRevealM: 150, // a placed find is noticed once the astronaut is this close to it
 } as const;
+
+// SCENARIO finds, not real Mars observations: a training target to plan for.
+export const FIND_LABELS = [
+  "an unusual banded outcrop",
+  "a cluster of dark, angular boulders",
+  "a patch of lighter-toned, cracked ground",
+] as const;
 
 export type CalamityKind = "rockfall" | "leak" | "dust" | "injury" | "spe";
 
@@ -30,12 +41,23 @@ export const CALAMITIES: Record<CalamityKind, { label: string; icon: string; det
   spe: { label: "Solar particle event", icon: "☢", detail: `Radiation warning: be back at base within ${SCENARIO.speDeadlineMin} min.` },
 };
 
-export type Phase = "outbound" | "science" | "inbound" | "returned" | "lost";
+export type Phase = "outbound" | "detour" | "inspect" | "science" | "inbound" | "returned" | "lost";
+
+export interface Find {
+  cell: number;
+  label: string;
+  offsetM: number; // distance from the planned route
+  state: "armed" | "found" | "detour" | "inspecting" | "done" | "skipped"; // armed = placed, not yet noticed
+}
 
 export interface OptionPlan {
-  id: "continue" | "return";
+  id: "continue" | "return" | "inspect" | "inspect-return";
   label: string;
-  path: number[]; // from the astronaut's next cell
+  path: number[]; // first leg, from the astronaut's next cell
+  fullPath?: number[]; // every leg joined, for drawing
+  legs?: { label: string; m: number; s: number }[]; // walking cost of each leg
+  atFind?: { o2AfterL: number; homeL: number; homeM: number }; // state at the find after inspecting, and the way home from there
+  inspectS?: number; // inspection time included
   walkS: number; // walking time for the whole option, at current speed
   scienceS: number; // science time included (continue only)
   needL: number; // oxygen the option needs
@@ -92,8 +114,15 @@ export class Sim {
   hazard: Grid;
   log: LogEntry[] = [];
   trail: number[] = [];
-  scheduled: { atS: number; kind: CalamityKind }[] = [];
+  scheduled: { atS: number; kind: CalamityKind | "discovery" }[] = [];
+  find: Find | null = null; // the find once noticed
+  armed: Find | null = null; // a find placed by mission control, not yet noticed
+  afterFind: "goal" | "base" = "goal"; // where to go once the inspection is done
+  inspectLeftS = 0;
+  inspectDoneS = 0;
+  goalReached = false;
   private rand: () => number;
+  private randFind: () => number; // separate stream: finds do not change the calamity schedule
 
   constructor(
     private cfg: SimConfig,
@@ -105,6 +134,7 @@ export class Sim {
     this.blocked = new Uint8Array(cfg.grid.rows * cfg.grid.cols);
     this.hazard = cfg.grid;
     this.rand = rng(seed);
+    this.randFind = rng((seed ^ 0x9e3779b9) >>> 0);
     this.note("info", "EVA started. Walking to the destination.");
   }
 
@@ -141,9 +171,13 @@ export class Sim {
     return { from: this.path[this.idx], to, frac: Math.min(1, this.segS / segT) };
   }
 
+  private get walking(): boolean {
+    return this.phase === "outbound" || this.phase === "inbound" || this.phase === "detour";
+  }
+
   // Options start from the next cell; the rest of the current step is added.
   private here(): { cell: number; extraS: number } {
-    if (this.phase !== "outbound" && this.phase !== "inbound") return { cell: this.path[this.idx], extraS: 0 };
+    if (!this.walking) return { cell: this.path[this.idx], extraS: 0 };
     if (this.idx + 1 >= this.path.length) return { cell: this.path[this.idx], extraS: 0 };
     return { cell: this.path[this.idx + 1], extraS: Math.max(0, this.segTime(this.path, this.idx) - this.segS) };
   }
@@ -162,12 +196,18 @@ export class Sim {
       const kind = kinds.splice(Math.floor(this.rand() * kinds.length), 1)[0];
       picks.push({ atS: (0.1 + 0.6 * this.rand()) * planned, kind });
     }
-    this.scheduled = picks.sort((a, b) => a.atS - b.atS);
+    this.scheduled = [...this.scheduled.filter((e) => e.kind === "discovery"), ...picks].sort((a, b) => a.atS - b.atS);
   }
 
-  // Advance the clock by dt seconds. Stops early, and returns the calamity,
+  // One unplanned find, noticed 25-45% of the way along the outbound walk.
+  scheduleFind(): void {
+    const atS = (0.25 + 0.2 * this.randFind()) * this.pathTime(this.path);
+    this.scheduled = [...this.scheduled, { atS, kind: "discovery" as const }].sort((a, b) => a.atS - b.atS);
+  }
+
+  // Advance the clock by dt seconds. Stops early, and returns the event,
   // if a scheduled one comes due.
-  advance(dt: number): CalamityKind | null {
+  advance(dt: number): CalamityKind | "discovery" | null {
     let left = dt;
     while (left > 1e-9 && !this.done) {
       const next = this.scheduled[0];
@@ -175,8 +215,13 @@ export class Sim {
       if (next) step = Math.min(step, Math.max(0, next.atS - this.t));
       if (step > 0) this.move(step);
       left -= step;
+      if (this.checkReveal()) return "discovery";
       if (next && this.t >= next.atS - 1e-9 && !this.done) {
         this.scheduled.shift();
+        if (next.kind === "discovery") {
+          if (this.discover()) return "discovery";
+          continue; // passed the spot already (or nothing reachable): the find is missed
+        }
         this.apply(next.kind);
         return next.kind;
       }
@@ -184,9 +229,77 @@ export class Sim {
     return null;
   }
 
+  // Mission control places a find on the map. The astronaut notices it once
+  // within findRevealM of it. Returns an error message, or null when placed.
+  armFind(cell: number): string | null {
+    if (this.find) return "A find was already noticed on this run.";
+    if (this.phase !== "outbound") return "A find can only be placed while the astronaut is walking out.";
+    if (this.blocked[cell]) return "That ground is blocked by a rockfall.";
+    if ([this.cfg.base, this.cfg.goal].some((p) => this.dist(p, cell) < 30)) return "Too close to the base or the destination.";
+    const { cell: here } = this.here();
+    if (!this.plan(here, cell)) return "The astronaut cannot walk there (too steep or cut off).";
+    if (!this.plan(cell, this.cfg.base)) return "There is no walkable way back to base from there.";
+    const ahead = this.path.slice(this.idx + 1);
+    const offsetM = ahead.length ? Math.min(...ahead.map((p) => this.dist(p, cell))) : 0;
+    this.armed = { cell, label: FIND_LABELS[cell % FIND_LABELS.length], offsetM, state: "armed" };
+    this.scheduled = this.scheduled.filter((e) => e.kind !== "discovery"); // placed by hand: no random one as well
+    this.note("info", `Mission control placed a find about ${Math.round(offsetM)} m off the route. The astronaut will notice it within ${SCENARIO.findRevealM} m.`);
+    return null;
+  }
+
+  private checkReveal(): boolean {
+    const a = this.armed;
+    if (!a || this.find || this.phase !== "outbound") return false;
+    const p = this.position();
+    if (this.dist(p.frac < 0.5 ? p.from : p.to, a.cell) > SCENARIO.findRevealM) return false;
+    this.find = { ...a, state: "found" };
+    this.armed = null;
+    this.note("event", `Unplanned find: the astronaut notices ${a.label}, about ${Math.round(a.offsetM)} m off the route. Scenario target, not a real Mars observation.`);
+    return true;
+  }
+
+  // Places a find 80-140 m off the route ahead, on ground the suit can walk to.
+  private discover(): boolean {
+    if (this.phase !== "outbound" || this.find || this.armed) return false;
+    const ahead = this.path.slice(this.idx + 1);
+    if (ahead.length < 8) return false;
+    const g = this.cfg.grid;
+    const anchor = ahead[Math.floor(ahead.length * 0.3)];
+    const ar = Math.floor(anchor / g.cols);
+    const ac = anchor % g.cols;
+    const { cell } = this.here();
+    for (let attempt = 0; attempt < 80; attempt++) {
+      const ang = this.randFind() * 2 * Math.PI;
+      const d = SCENARIO.findOffsetMinM + (SCENARIO.findOffsetMaxM - SCENARIO.findOffsetMinM) * this.randFind();
+      const r = Math.round(ar + (Math.sin(ang) * d) / g.dy);
+      const c = Math.round(ac + (Math.cos(ang) * d) / g.dx[ar]);
+      if (r < 0 || c < 0 || r >= g.rows || c >= g.cols) continue;
+      const target = r * g.cols + c;
+      // True distance from the route ahead, so "off the route" means off the route.
+      const offsetM = Math.min(...ahead.map((p) => this.dist(p, target)));
+      if (offsetM < SCENARIO.findOffsetMinM || offsetM > SCENARIO.findOffsetMaxM) continue;
+      if (this.blocked[target] || [this.cfg.base, this.cfg.goal, cell].some((p) => this.dist(p, target) < 40)) continue;
+      if (!this.plan(cell, target)) continue;
+      const label = FIND_LABELS[Math.floor(this.randFind() * FIND_LABELS.length)];
+      this.find = { cell: target, label, offsetM, state: "found" };
+      this.note("event", `Unplanned find: the astronaut notices ${label}, about ${Math.round(offsetM)} m off the route. Scenario target, not a real Mars observation.`);
+      return true;
+    }
+    return false;
+  }
+
   private move(dt: number) {
     let left = dt;
     while (left > 1e-9 && !this.done) {
+      if (this.phase === "inspect") {
+        const s = Math.min(left, this.inspectLeftS);
+        this.burn(s);
+        this.inspectLeftS -= s;
+        this.inspectDoneS += s;
+        left -= s;
+        if (this.inspectLeftS <= 1e-9 && !this.done) this.afterInspect();
+        continue;
+      }
       if (this.phase === "science") {
         const s = Math.min(left, this.scienceLeftS);
         this.burn(s);
@@ -238,7 +351,13 @@ export class Sim {
 
   private arrive() {
     const at = this.path[this.path.length - 1];
-    if (this.phase === "outbound" && at === this.cfg.goal) {
+    if (this.phase === "detour" && this.find && at === this.find.cell) {
+      this.phase = "inspect";
+      this.find.state = "inspecting";
+      this.note("info", `Reached the find. Inspection: ${Math.round(this.inspectLeftS / 60)} min planned.`);
+      if (this.inspectLeftS <= 0) this.afterInspect();
+    } else if (this.phase === "outbound" && at === this.cfg.goal) {
+      this.goalReached = true;
       this.phase = "science";
       this.note("info", `Arrived at the destination. Science work: ${Math.round(this.scienceLeftS / 60)} min planned.`);
       if (this.scienceLeftS <= 0) this.startInbound();
@@ -250,11 +369,31 @@ export class Sim {
     }
   }
 
+  // Inspection finished: carry on to the destination, or head home.
+  private afterInspect() {
+    if (this.find) this.find.state = "done";
+    this.inspectLeftS = 0;
+    const from = this.path[this.idx] ?? this.path[this.path.length - 1];
+    const next = this.afterFind === "goal" ? this.plan(from, this.cfg.goal) : null;
+    if (!next) {
+      this.note("info", "Inspection complete. Heading back to base.");
+      this.startInbound();
+      return;
+    }
+    this.phase = "outbound";
+    this.path = next;
+    this.idx = 0;
+    this.segS = 0;
+    this.note("info", "Inspection complete. Continuing to the destination.");
+    if (next.length === 1) this.arrive();
+  }
+
   private startInbound() {
     const from = this.path[this.idx] ?? this.path[this.path.length - 1];
     const back = this.plan(from, this.cfg.base);
     this.phase = "inbound";
     this.scienceLeftS = 0;
+    this.inspectLeftS = 0;
     if (!back) {
       this.phase = "lost";
       this.note("end", "No walkable way back to base.");
@@ -293,13 +432,13 @@ export class Sim {
   private rockfall(): string | null {
     const { cell } = this.here();
     let ahead: number[] | null;
-    if (this.phase === "science") ahead = this.plan(cell, this.cfg.base);
+    if (this.phase === "science" || this.phase === "inspect") ahead = this.plan(cell, this.cfg.base);
     else ahead = this.path.slice(this.idx + 1);
     if (!ahead || ahead.length < 4) return null;
     const k = Math.floor(ahead.length * (0.35 + 0.25 * this.rand()));
     const centre = ahead[Math.min(k, ahead.length - 2)];
     const g = this.cfg.grid;
-    const protect = [cell, this.cfg.base, this.cfg.goal];
+    const protect = [cell, this.cfg.base, this.cfg.goal, ...(this.find ? [this.find.cell] : [])];
     const cr = Math.floor(centre / g.cols);
     const cc = centre % g.cols;
     const span = Math.ceil(SCENARIO.rockfallRadiusM / g.dxMin) + 1;
@@ -327,45 +466,93 @@ export class Sim {
     return Math.hypot(((a % g.cols) - (b % g.cols)) * g.dx[ra], (ra - rb) * g.dy);
   }
 
-  // The choices from where the astronaut is now.
-  options(): OptionPlan[] {
-    const { cell, extraS } = this.here();
+  // ---- planning: a route is a list of stops, then base ----
+  // Walk to each stop in turn, work there, then walk home. Inspection time is
+  // fixed once planned; science time is the flexible part and is cut back to
+  // whatever the oxygen (and any deadline) still allows.
+  private evalStops(id: OptionPlan["id"], label: string, cell: number, extraS: number, stops: Stop[]): OptionPlan | null {
+    let from = cell;
+    let walkS = extraS;
+    let fixedWork = 0;
+    let wantScience = 0;
+    let inspectS = 0;
+    let first: number[] | null = null;
+    const full = [cell];
+    const legs: { label: string; m: number; s: number }[] = [];
+    let fromName = "here";
+    for (const st of stops) {
+      const p = this.plan(from, st.cell);
+      if (!p) return null;
+      first ??= p;
+      legs.push({ label: `${fromName} \u2192 ${st.name}`, m: this.pathLength(p), s: this.pathTime(p) + (legs.length === 0 ? extraS : 0) });
+      fromName = st.name;
+      walkS += this.pathTime(p);
+      full.push(...p.slice(1));
+      from = st.cell;
+      if (st.kind === "inspect") {
+        fixedWork += st.workS;
+        inspectS += st.workS;
+      } else wantScience += st.workS;
+    }
+    const back = this.plan(from, this.cfg.base);
+    if (!back) return null;
+    legs.push({ label: `${fromName} \u2192 base`, m: this.pathLength(back), s: this.pathTime(back) + (legs.length === 0 ? extraS : 0) });
+    walkS += this.pathTime(back);
+    full.push(...back.slice(1));
     const left = this.o2LeftL;
-    const out: OptionPlan[] = [];
-    const deadlineOk = (arrive: number) => this.deadlineS === null || arrive <= this.deadlineS;
+    // At the find, after inspecting: oxygen left, and what the way straight home from there costs.
+    let atFind: OptionPlan["atFind"];
+    if (stops[0]?.kind === "inspect") {
+      const home = this.plan(stops[0].cell, this.cfg.base);
+      if (home) atFind = { o2AfterL: left - this.litres(legs[0].s + stops[0].workS), homeL: this.litres(this.pathTime(home)), homeM: this.pathLength(home) };
+    }
+    const fixedS = walkS + fixedWork;
+    const o2Room = (left - this.litres(fixedS)) / this.litres(1);
+    const timeRoom = this.deadlineS === null ? Infinity : this.deadlineS - this.t - fixedS;
+    const scienceS = Math.max(0, Math.min(wantScience, o2Room, timeRoom));
+    const needL = this.litres(fixedS + scienceS);
+    const arriveS = this.t + fixedS + scienceS;
+    const science = stops.some((st) => st.kind === "science");
+    const cut = scienceS < wantScience - 1;
+    const parts = [
+      ...(inspectS > 0 ? [`${Math.round(inspectS / 60)} min inspection`] : []),
+      ...(science ? [`${Math.floor(scienceS / 60)} min science${cut ? " (cut short)" : ""}`] : []),
+    ];
+    return {
+      id,
+      label,
+      path: first ?? [cell],
+      fullPath: full,
+      legs,
+      atFind,
+      inspectS,
+      walkS,
+      scienceS,
+      needL,
+      spareL: left - needL,
+      arriveS,
+      feasible: needL <= left && (this.deadlineS === null || arriveS <= this.deadlineS) && (!science || wantScience === 0 || scienceS > 0 || this.phase === "science"),
+      note: parts.join(", ") || `${Math.round(this.pathLength(full))} m round trip`,
+    };
+  }
 
+  // What the astronaut still has to do on the way to a successful return.
+  private plannedStops(): Stop[] | null {
+    const sci = (workS: number): Stop => ({ name: "destination", cell: this.cfg.goal, kind: "science", workS });
+    if (this.phase === "outbound") return [sci(this.cfg.scienceS)];
+    if (this.phase === "science") return [sci(this.scienceLeftS)];
+    if ((this.phase === "detour" || this.phase === "inspect") && this.find) {
+      return [{ name: "the find", cell: this.find.cell, kind: "inspect", workS: this.inspectLeftS }, ...(this.afterFind === "goal" ? [sci(this.cfg.scienceS)] : [])];
+    }
+    return null;
+  }
+
+  private returnOption(cell: number, extraS: number): OptionPlan {
+    const left = this.o2LeftL;
     const home = this.plan(cell, this.cfg.base);
     const homeS = home ? extraS + this.pathTime(home) : Infinity;
-    if (this.phase === "outbound" || this.phase === "science") {
-      const toGoal = this.phase === "outbound" ? this.plan(cell, this.cfg.goal) : [cell];
-      const fromGoal = this.plan(this.cfg.goal, this.cfg.base);
-      if (toGoal && fromGoal) {
-        const walkS = (this.phase === "outbound" ? extraS : 0) + this.pathTime(toGoal) + this.pathTime(fromGoal);
-        // Science time that still fits the oxygen (and the deadline), capped at the plan.
-        const o2Room = (left - this.litres(walkS)) / this.litres(1);
-        const timeRoom = this.deadlineS === null ? Infinity : this.deadlineS - this.t - walkS;
-        const scienceS = Math.max(0, Math.min(this.phase === "science" ? this.scienceLeftS : this.cfg.scienceS, o2Room, timeRoom));
-        const needL = this.litres(walkS + scienceS);
-        const arriveS = this.t + walkS + scienceS;
-        const rerouted = this.phase === "outbound" && !sameTail(toGoal, this.path, this.idx + 1);
-        out.push({
-          id: "continue",
-          label: this.phase === "science" ? "Continue science, then return" : rerouted ? "Continue (rerouted)" : "Continue to destination",
-          path: toGoal,
-          walkS,
-          scienceS,
-          needL,
-          spareL: left - needL,
-          arriveS,
-          feasible: needL <= left && deadlineOk(arriveS) && (scienceS > 0 || this.phase === "science"),
-          note: `${Math.floor(scienceS / 60)} min science` + (scienceS < (this.phase === "science" ? this.scienceLeftS : this.cfg.scienceS) - 1 ? " (cut short)" : ""),
-        });
-      } else {
-        out.push({ id: "continue", label: "Continue to destination", path: [cell], walkS: Infinity, scienceS: 0, needL: Infinity, spareL: -Infinity, arriveS: Infinity, feasible: false, note: "destination cut off" });
-      }
-    }
     const needL = this.litres(homeS);
-    out.push({
+    return {
       id: "return",
       label: this.phase === "inbound" ? "Return to base (replanned)" : "Abort: return to base now",
       path: home ?? [cell],
@@ -374,9 +561,34 @@ export class Sim {
       needL,
       spareL: left - needL,
       arriveS: this.t + homeS,
-      feasible: !!home && needL <= left && deadlineOk(this.t + homeS),
+      feasible: !!home && needL <= left && (this.deadlineS === null || this.t + homeS <= this.deadlineS),
       note: home ? `${Math.round(this.pathLength(home))} m to base` : "no way back",
-    });
+    };
+  }
+
+  // The choices from where the astronaut is now.
+  options(): OptionPlan[] {
+    const { cell, extraS } = this.here();
+    const out: OptionPlan[] = [];
+    const stops = this.plannedStops();
+    if (stops) {
+      const working = this.phase === "detour" || this.phase === "inspect";
+      const label = (rerouted: boolean) =>
+        this.phase === "science"
+          ? "Continue science, then return"
+          : working
+            ? this.afterFind === "goal" ? "Finish inspection, then the destination" : "Finish inspection, then return"
+            : rerouted ? "Continue (rerouted)" : "Continue to destination";
+      const probe = this.evalStops("continue", label(false), cell, this.phase === "science" || this.phase === "inspect" ? 0 : extraS, stops);
+      if (probe) {
+        const rerouted = this.phase === "outbound" && !sameTail(probe.path, this.path, this.idx + 1);
+        probe.label = label(rerouted);
+        out.push(probe);
+      } else {
+        out.push({ id: "continue", label: "Continue to destination", path: [cell], walkS: Infinity, scienceS: 0, needL: Infinity, spareL: -Infinity, arriveS: Infinity, feasible: false, note: "destination cut off" });
+      }
+    }
+    out.push(this.returnOption(cell, extraS));
     return out;
   }
 
@@ -389,34 +601,141 @@ export class Sim {
     return "return";
   }
 
-  choose(id: OptionPlan["id"], by: string): void {
-    const opt = this.options().find((o) => o.id === id);
+  // ---- the unplanned find: plan an inspection against the oxygen budget ----
+  // The four ways to answer a find, for an inspection of inspectS seconds.
+  findOptions(inspectS: number): OptionPlan[] {
+    const f = this.find;
+    if (!f || this.phase !== "outbound") return [];
+    const { cell, extraS } = this.here();
+    const insp: Stop = { name: "the find", cell: f.cell, kind: "inspect", workS: inspectS };
+    const sci: Stop = { name: "destination", cell: this.cfg.goal, kind: "science", workS: this.cfg.scienceS };
+    const unreachable = (id: OptionPlan["id"], label: string): OptionPlan => ({
+      id, label, path: [cell], walkS: Infinity, scienceS: 0, needL: Infinity, spareL: -Infinity, arriveS: Infinity, feasible: false, note: "no walkable route for one of the legs",
+    });
+    const mk = (id: OptionPlan["id"], label: string, stops: Stop[]) => this.evalStops(id, label, cell, extraS, stops) ?? unreachable(id, label);
+    return [
+      mk("inspect", "Inspect it, then continue to the destination", [insp, sci]),
+      mk("continue", "Skip it, continue as planned", [sci]),
+      mk("inspect-return", "Inspect it, then return (destination skipped)", [insp]),
+      this.returnOption(cell, extraS),
+    ];
+  }
+
+  // Longest inspection (seconds) that still keeps the whole plan (full science
+  // for "goal", or just the inspection for "base") inside the 80% oxygen caution
+  // line and any deadline. 0 means there is no spare time for it.
+  inspectBudgetS(after: "goal" | "base"): number {
+    const f = this.find;
+    if (!f) return 0;
+    const { cell, extraS } = this.here();
+    const insp: Stop = { name: "the find", cell: f.cell, kind: "inspect", workS: 0 };
+    const sci: Stop = { name: "destination", cell: this.cfg.goal, kind: "science", workS: this.cfg.scienceS };
+    const o = this.evalStops("inspect", "", cell, extraS, after === "goal" ? [insp, sci] : [insp]);
+    if (!o || !o.feasible || (after === "goal" && o.scienceS < this.cfg.scienceS - 1)) return 0;
+    const margin = this.cfg.reserveL * (1 - CAUTION_FRACTION);
+    const o2Room = (o.spareL - margin) / this.litres(1);
+    const timeRoom = this.deadlineS === null ? Infinity : this.deadlineS - o.arriveS;
+    return Math.max(0, Math.min(o2Room, timeRoom, SCENARIO.findMaxInspectMin * 60));
+  }
+
+  // Suggested answer to a find. Display rule, not a NASA rule: keep the main
+  // goal and the 20% oxygen margin first; give up the goal only for the find.
+  recommendFind(opts: OptionPlan[]): OptionPlan["id"] {
+    const margin = this.cfg.reserveL * (1 - CAUTION_FRACTION);
+    const ok = (id: OptionPlan["id"]) => {
+      const o = opts.find((x) => x.id === id);
+      return !!o && o.feasible && o.spareL >= margin - 1e-6 ? o : null; // tolerance: the budget lands exactly on the margin
+    };
+    const full = ok("inspect");
+    if (full && full.scienceS >= this.cfg.scienceS - 1) return "inspect";
+    if (ok("continue")) return "continue";
+    if (ok("inspect-return")) return "inspect-return";
+    return "return";
+  }
+
+  // Apply the astronaut's answer to a find. "continue" means skip it.
+  answerFind(id: OptionPlan["id"], inspectS: number, by: string): void {
+    const f = this.find;
+    if (!f || f.state !== "found") return;
+    const opt = this.findOptions(inspectS).find((o) => o.id === id);
     if (!opt) return;
-    // Finish the current step first, so the new path starts where we are going.
-    if ((this.phase === "outbound" || this.phase === "inbound") && this.idx + 1 < this.path.length) {
+    if (id === "continue") {
+      f.state = "skipped";
+      this.note("decision", `${by}: skip the find, continue as planned.`);
+      return;
+    }
+    if (id === "return") {
+      f.state = "skipped";
+      this.choose("return", by);
+      return;
+    }
+    this.finishStep();
+    if (this.done) return;
+    this.afterFind = id === "inspect" ? "goal" : "base";
+    this.inspectLeftS = inspectS;
+    if (id === "inspect") {
+      this.cfg.scienceS = opt.scienceS;
+      this.scienceLeftS = opt.scienceS;
+    }
+    f.state = "detour";
+    this.phase = "detour";
+    this.path = opt.path;
+    this.idx = 0;
+    this.segS = 0;
+    this.note("decision", `${by}: ${opt.label} (${Math.round(inspectS / 60)} min inspection).`);
+  }
+
+  // Finish the current step first, so a new path starts where we are going.
+  private finishStep() {
+    if (this.walking && this.idx + 1 < this.path.length) {
       const rest = this.segTime(this.path, this.idx) - this.segS;
       this.idx++;
       this.segS = 0;
       this.trail.push(this.path[this.idx]);
       this.burn(Math.max(0, rest));
     }
+  }
+
+  choose(id: OptionPlan["id"], by: string): void {
+    const opt = this.options().find((o) => o.id === id);
+    if (!opt) return;
+    this.finishStep();
     if (this.done) return;
-    if (id === "continue" && this.phase === "outbound") {
+    const cellNow = this.path[this.idx];
+    if (id === "continue" && (this.phase === "outbound" || this.phase === "detour")) {
       this.path = opt.path;
-      this.cfg.scienceS = opt.scienceS;
-      this.scienceLeftS = opt.scienceS;
+      if (this.afterFind === "goal" || this.phase === "outbound") {
+        this.cfg.scienceS = opt.scienceS;
+        this.scienceLeftS = opt.scienceS;
+      }
     } else if (id === "continue" && this.phase === "science") {
       this.scienceLeftS = opt.scienceS;
+      this.path = [cellNow]; // stay put: working phases keep the position in path[idx]
+    } else if (id === "continue" && this.phase === "inspect") {
+      if (this.afterFind === "goal") {
+        this.cfg.scienceS = opt.scienceS;
+        this.scienceLeftS = opt.scienceS;
+      }
+      this.path = [cellNow];
     } else {
       this.phase = "inbound";
       this.scienceLeftS = 0;
+      this.inspectLeftS = 0;
+      if (this.find && this.find.state !== "done") this.find.state = "skipped";
       this.path = opt.path;
     }
     this.idx = 0;
     this.segS = 0;
     this.note("decision", `${by}: ${opt.label}.`);
-    if (this.path.length === 1 && this.phase !== "science") this.arrive();
+    if (this.path.length === 1 && this.walking) this.arrive();
   }
+}
+
+interface Stop {
+  name: string;
+  cell: number;
+  kind: "inspect" | "science";
+  workS: number;
 }
 
 // True if `a` follows the same cells as `path` from index `from` onward.

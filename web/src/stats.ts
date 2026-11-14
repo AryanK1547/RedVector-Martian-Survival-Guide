@@ -115,3 +115,22 @@ export function drawProfile(canvas: HTMLCanvasElement, steps: RouteStep[] | null
   ctx.fillText(`destination, ${dist(total)}`, w - pad.r, h - 5);
   ctx.textAlign = "left";
 }
+
+// Regional maps (1.85 km cells) are for orientation, not for one EVA: a walk
+// across them takes hours to days, far beyond a suit's oxygen. Show the
+// traverse numbers and say where the EVA tools are.
+export function renderTraverse(el: HTMLElement, steps: RouteStep[], cellSize: string): void {
+  const s = summarize(steps);
+  const hours = s.timeS / 3600;
+  const time = hours < 48 ? `${hours.toFixed(1)} h` : `${(hours / 24).toFixed(1)} days`;
+  el.innerHTML = `
+    <div class="verdict regional"><span>REGIONAL TRAVERSE</span><small>overview scale</small></div>
+    <div class="kpis">
+      <div><b>${dist(s.distanceM)}</b><small>distance</small></div>
+      <div><b>${time}</b><small>walking*</small></div>
+      <div><b>+${Math.round(s.ascentM)} / -${Math.round(s.descentM)} m</b><small>climb / descent</small></div>
+    </div>
+    <p class="note">This map has ${cellSize} cells: good for choosing a site, too coarse for an EVA. Oxygen verdicts, the return range
+    and the live EVA simulation need the 10 m resolution of the EVA site map.</p>
+    <p class="note">* Model assumption: 2.5 km/h on flat ground, slowed on grades (Tobler). Slopes are averaged over ${cellSize}, so they are under-stated.</p>`;
+}

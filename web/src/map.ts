@@ -76,8 +76,15 @@ export function createMap(container: HTMLElement, meta: Meta, base: string, attr
   return map;
 }
 
-export function setBase(map: maplibregl.Map, base: Base): void {
-  map.setLayoutProperty("ctx", "visibility", base === "photo" ? "visible" : "none");
+// A photo that covers the whole map replaces the relief completely, so nothing
+// ghosts through. A partial photo (the Gale mosaic covers about 24%) sits on a
+// dimmed relief, so the rest of the map is not left empty.
+export function setBase(map: maplibregl.Map, base: Base, coveragePercent = 100): void {
+  const photo = base === "photo";
+  const full = coveragePercent >= 99;
+  map.setLayoutProperty("ctx", "visibility", photo ? "visible" : "none");
+  map.setLayoutProperty("hillshade", "visibility", photo && full ? "none" : "visible");
+  map.setPaintProperty("hillshade", "raster-opacity", photo && !full ? 0.4 : 1);
 }
 
 export function setOverlay(map: maplibregl.Map, overlay: Overlay, on: boolean): void {

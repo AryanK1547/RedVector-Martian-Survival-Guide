@@ -26,6 +26,7 @@ export interface RoutingView {
 }
 
 export interface RoutingOptions {
+  eva: boolean; // false on regional maps: no return range and no turn-back marker
   strategy: () => StrategyName;
   reserve: () => number;
   follow: () => boolean;
@@ -86,10 +87,10 @@ export function setupRouting(
   // Recomputes the return map and the verdict from the current state.
   const refresh = () => {
     const reserve = opts.reserve() > 0 ? opts.reserve() : 0.001;
-    overlay?.render(returnVisible ? times : null, reserve);
+    overlay?.render(opts.eva && returnVisible ? times : null, reserve);
     if (steps && times) {
       const verdict = assess(steps, times, reserve);
-      drawPoints(verdict.pointOfNoReturn !== null ? steps[verdict.pointOfNoReturn].cell : null);
+      drawPoints(opts.eva && verdict.pointOfNoReturn !== null ? steps[verdict.pointOfNoReturn].cell : null);
       view.result({ steps, verdict });
     } else {
       drawPoints(null);

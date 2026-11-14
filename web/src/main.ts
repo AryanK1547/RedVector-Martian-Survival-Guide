@@ -4,7 +4,7 @@ import { cellSizeLabel, loadTerrain } from "./data";
 import { addWaypointMarkers, createMap, createOverviewMap, setBase, setOverlay, type Base, type Overlay, type OverviewInfo } from "./map";
 import { RouteClient } from "./route/client";
 import type { StrategyName } from "./route/cost";
-import { drawProfile, renderVerdict } from "./stats";
+import { drawProfile, renderTraverse, renderVerdict } from "./stats";
 import { startSim } from "./sim/view";
 import { setupRouting, strategyNames, type RouteResult } from "./ui";
 import { loadWaypoints, type Waypoint } from "./waypoints";
@@ -17,6 +17,7 @@ interface Region {
   base: string; // folder under public/ holding meta.json, elevation.bin, slope.bin and PNGs
   attribution: string;
   kind?: "overview"; // overview = whole-planet picture with site markers, no routing
+  eva?: false; // regional map: routing only; no oxygen verdict, return range or live simulation
 }
 
 const REGIONS: Region[] = [
@@ -33,6 +34,7 @@ const REGIONS: Region[] = [
     tab: "Gale Crater",
     label: "Gale Crater overview (1.85 km cells)",
     base: "data/",
+    eva: false,
     attribution: "Terrain: NASA MGS MOLA MEGDR, PDS Geosciences Node. Imagery: NASA MRO CTX via NASA Mars Trek; THEMIS (ASU). Rover positions: NASA PDS MSL PLACES. Hillshade and slope are our own visualization.",
   },
   {
@@ -139,6 +141,9 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
 
   const mapEl = el(`<div id="map"></div>`);
   app.append(mapEl);
+  const eva = region.eva !== false;
+  const coverage: number = await fetch(`${region.base}ctx.json`).then((r) => r.json()).then((j) => j.coverage_percent).catch(() => 0);
+  const photoFull = coverage >= 99;
   const map: MapLibreMap = createMap(mapEl, meta, region.base, region.attribution);
   const markers = addWaypointMarkers(map, waypoints);
   const client = new RouteClient(terrain);
@@ -152,21 +157,23 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
   const left = el(`<aside id="left" class="card">
       <h2>${region.label}</h2>
       <p id="status" class="status"></p>
-      ${region.id === "boxwork" ? `<button id="example" class="ghost">Try an example walk</button>` : ""}
+      ${eva ? `<button id="example" class="ghost">Try an example walk</button>` : `<p class="note">Regional map: plan a traverse across the crater. For oxygen limits, return range and the live EVA simulation, open the <b>Boxwork EVA site</b> tab.</p>`}
       <h3>Route strategy</h3>
       <div class="seg" id="strategy">${strategyNames.map((n, i) => `<button data-v="${n}" class="${i === 0 ? "active" : ""}">${n[0].toUpperCase()}${n.slice(1)}</button>`).join("")}</div>
-      <h3>Oxygen reserve <output id="reserve-out">30 L</output></h3>
-      <input id="reserve" type="range" min="10" max="120" step="1" value="30">
-      <p class="note">Demo value, not a NASA suit figure.</p>
-      <h3>Science stops</h3>
-      <div id="stops"></div>
+      <div ${eva ? "" : "hidden"}>
+        <h3>Oxygen reserve <output id="reserve-out">30 L</output></h3>
+        <input id="reserve" type="range" min="10" max="120" step="1" value="30">
+        <p class="note">Demo value, not a NASA suit figure.</p>
+        <h3>Science stops</h3>
+        <div id="stops"></div>
+      </div>
       <h3>Map layers</h3>
-      <div class="seg" id="base"><button data-v="photo" class="active">Photo (CTX)</button><button data-v="relief">Relief</button></div>
+      <div class="seg" id="base"><button data-v="photo"${photoFull ? ' class="active"' : ""}>Photo${photoFull ? "" : ` (${Math.round(coverage)}% of area)`}</button><button data-v="relief"${photoFull ? "" : ' class="active"'}>Relief</button></div>
       <h3>Data lens <output>one at a time</output></h3>
-      <div class="seg" id="lens"><button data-v="return" class="active">Return</button><button data-v="slope">Slope</button><button data-v="thermal">Thermal</button><button data-v="none">None</button></div>
-      <input id="lens-opacity" type="range" min="15" max="100" step="5" value="100" aria-label="Lens opacity">
-      <div class="legend" id="legend">${LEGENDS.return}</div>
-      <p class="note" id="layer-note">${OVERLAY_NOTES.return}</p>
+      <div class="seg" id="lens">${eva ? `<button data-v="return" class="active">Return</button>` : ""}<button data-v="slope"${eva ? "" : ' class="active"'}>Slope</button><button data-v="thermal">Thermal</button><button data-v="none">None</button></div>
+      <input id="lens-opacity" type="range" min="15" max="100" step="5" value="${eva ? 100 : LENS_OPACITY.slope}" aria-label="Lens opacity">
+      <div class="legend" id="legend">${LEGENDS[eva ? "return" : "slope"]}</div>
+      <p class="note" id="layer-note">${OVERLAY_NOTES[eva ? "return" : "slope"]}</p>
       <p class="note">Cell size ${cellSizeLabel(meta)}.</p>
     </aside>`);
   app.append(left);
@@ -174,9 +181,12 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
   // ---- right card: verdict ----
   const right = el(`<aside id="right" class="card">
       <div id="verdict"><div class="empty">
-        <h2>Is this walk safe?</h2>
+        ${eva
+          ? `<h2>Is this walk safe?</h2>
         <ol><li><b>Click the map</b> to set your base.</li><li><b>Click a destination</b> or press <i>Walk here</i> on a science stop.</li>
-        <li>Get a <b>GO / NO-GO</b> verdict, your science time on site and where to turn back.</li></ol>
+        <li>Get a <b>GO / NO-GO</b> verdict, your science time on site and where to turn back.</li></ol>`
+          : `<h2>Plan a regional traverse</h2>
+        <ol><li><b>Click the map</b> to set a start.</li><li><b>Click a destination</b> to plan the route.</li></ol>`}
       </div></div>
       <div class="actions" hidden>
         <h3>Live EVA simulation</h3>
@@ -184,6 +194,7 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
           <label>Science time <input id="sci" type="number" min="0" max="120" step="1" value="10"> min</label>
           <label class="check"><input id="rand" type="checkbox" checked> Random calamities</label>
         </div>
+        <div class="sim-setup"><label>Unplanned find <select id="find"><option value="place" selected>I place it on the map</option><option value="random">Random</option><option value="off">None</option></select></label></div>
         <button id="sim" class="primary wide">Start live EVA &#9654;</button>
         <p class="note">You play mission control: calamities strike during the walk and you decide, live, whether the astronaut continues or turns back.</p>
       </div>
@@ -205,7 +216,7 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
   const actions = right.querySelector<HTMLElement>(".actions")!;
   const sciEl = right.querySelector<HTMLInputElement>("#sci")!;
   let strategy: StrategyName = strategyNames[0];
-  let lens: Lens = "return";
+  let lens: Lens = eva ? "return" : "slope";
   let last: RouteResult | null = null;
 
   const rates = Object.values(conditions.sols).map((s) => s.rad.dose_rate_b_silicon_ugy_per_day);
@@ -216,8 +227,9 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
     terrain,
     client,
     {
+      eva,
       strategy: () => strategy,
-      reserve: () => Number(reserveEl.value),
+      reserve: () => Number(reserveEl.value) || 30,
       follow: () => true,
       hud,
     },
@@ -229,21 +241,25 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
       stage: (s) => setStep(bar, STAGE_STEP[s]),
       result: (r) => {
         last = r;
-        actions.hidden = !r;
+        actions.hidden = !r || !eva;
         bottom.hidden = !r;
         app.classList.toggle("has-route", !!r);
         if (r) {
           // Suggest a science stint that leaves headroom for surprises.
-          sciEl.value = String(Math.max(0, Math.min(15, Math.floor(r.verdict.scienceMin * 0.6))));
-          renderVerdict(verdictEl, r.steps, r.verdict, doseRate, cellSizeLabel(meta));
-          drawProfile(profile, r.steps, r.verdict.pointOfNoReturn);
+          if (eva) {
+            sciEl.value = String(Math.max(0, Math.min(15, Math.floor(r.verdict.scienceMin * 0.6))));
+            renderVerdict(verdictEl, r.steps, r.verdict, doseRate, cellSizeLabel(meta));
+          } else {
+            renderTraverse(verdictEl, r.steps, cellSizeLabel(meta));
+          }
+          drawProfile(profile, r.steps, eva ? r.verdict.pointOfNoReturn : null);
         } else {
           verdictEl.innerHTML = emptyVerdict;
         }
       },
     },
   );
-  const onResize = () => last && drawProfile(profile, last.steps, last.verdict.pointOfNoReturn);
+  const onResize = () => last && drawProfile(profile, last.steps, eva ? last.verdict.pointOfNoReturn : null);
   window.addEventListener("resize", onResize);
   teardown = () => {
     stopSim?.();
@@ -280,7 +296,7 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
     bottom.hidden = !last;
     app.classList.remove("sim-mode");
     routing.lock(false);
-    routing.setReturnVisible(lens === "return");
+    routing.setReturnVisible(eva && lens === "return");
     setStep(bar, last ? 2 : 1);
   };
   const runSim = (seed: number) => {
@@ -295,11 +311,18 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
     routing.lock(true);
     routing.setReturnVisible(false);
     setStep(bar, 3);
+    // The brief from Earth: if the destination is a known science stop, say why it matters.
+    const [glon, glat] = routing.lonLat(cur.goal);
+    const wp = waypoints.find((w) => Math.hypot(w.lon - glon, w.lat - glat) < 0.0007);
     stopSim = startSim({
       map, terrain, ...cur,
       reserveL: Number(reserveEl.value),
       scienceS: Math.max(0, Number(sciEl.value) || 0) * 60,
       randomCount: right.querySelector<HTMLInputElement>("#rand")!.checked ? 2 : 0,
+      findMode: right.querySelector<HTMLSelectElement>("#find")!.value as "off" | "random" | "place",
+      objective: wp
+        ? { name: wp.name, quote: wp.identificationQuote, sourceUrl: wp.identificationSource }
+        : { name: "the selected destination" },
       seed,
       lonLat: routing.lonLat,
       panel: mc,
@@ -316,8 +339,11 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
   left.querySelectorAll<HTMLButtonElement>("#base button").forEach((b) =>
     b.addEventListener("click", () => {
       left.querySelectorAll("#base button").forEach((x) => x.classList.toggle("active", x === b));
-      setBase(map, b.dataset.v as Base);
-      note.textContent = OVERLAY_NOTES[b.dataset.v as Base];
+      setBase(map, b.dataset.v as Base, coverage);
+      note.textContent =
+        b.dataset.v === "photo" && !photoFull
+          ? `Base: NASA MRO Context Camera (CTX) mosaic via NASA Mars Trek. It covers only ${Math.round(coverage)}% of this map; the relief is dimmed behind it.`
+          : OVERLAY_NOTES[b.dataset.v as Base];
     }),
   );
   const opacityEl = left.querySelector<HTMLInputElement>("#lens-opacity")!;
@@ -332,7 +358,7 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
       lens = b.dataset.v as Lens;
       setOverlay(map, "slope", lens === "slope");
       setOverlay(map, "thermal", lens === "thermal");
-      routing.setReturnVisible(lens === "return");
+      routing.setReturnVisible(eva && lens === "return");
       opacityEl.value = String(LENS_OPACITY[lens]);
       opacityEl.disabled = lens === "none";
       applyOpacity();
@@ -341,7 +367,10 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
     }),
   );
   opacityEl.addEventListener("input", applyOpacity);
-  map.once("load", () => setBase(map, "photo"));
+  map.once("load", () => {
+    if (photoFull) setBase(map, "photo", coverage);
+    if (!eva) setOverlay(map, "slope", true);
+  });
 
   // Science stops as cards: photo, sol, and one-click planning.
   const stops = left.querySelector<HTMLElement>("#stops")!;
