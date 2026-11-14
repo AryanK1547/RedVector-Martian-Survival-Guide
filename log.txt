@@ -1,0 +1,27 @@
+## [2026-11-14T13:45:00+05:30] BACKFILL: pre-event learning and planning (NOT repo code)
+
+Phase: pre-event | Tool: Claude chat | Model: claude-sonnet-5-5 (serving model may differ)
+Goal: learn MOLA data handling and plan the MarsWalk project before the hackathon window
+AI Generated: nothing in this repository. Lesson code from earlier chats (mars_data.py, binary_test.py, read_mola.py, mars_terrain.py, coordinates.py, slope.py v1) lives outside the repo and will be re-created inside the window.
+Human Did: worked through 20 lesson turns, ran the code, obtained the MOLA file and ENVI header, reported read-check output (66,355,200 values, shape 5760x11520, min -8206, max 21181).
+Concepts Taught: raster data, NumPy arrays and fromfile/reshape, dtype >i2, pathlib, coordinate conversion lat/lon <-> row/column, matplotlib imshow, slope via np.gradient, NoData vs zero.
+Decisions: project MarsWalk; scope Level 1 (2D replay) + Level 2 (3D walk-through); one cropped Gale-region; stack revised to static web app on 14 Nov (GitHub Pages is static-only).
+Verified: raster read check as above.
+Assumed / Unverified: pixel size 1852.2306687 m; NoData value 0; pixel-center convention; longitude wrap.
+Open Issues: NoData masking; cos(latitude) spacing; coordinate checks; crop bounds; ask organisers whether re-creating earlier learning code in the window is acceptable.
+Commit Point: no
+Next: P0 setup (repo, git email, kit files, first human push).
+
+## [2026-11-14T14:30:00+05:30] P0: kit files placed, .gitignore added
+
+Phase: P0 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: put kit files where the contract expects them and prepare the first human push
+AI Generated: renamed AGENTS_1.md to AGENTS.md; moved settings.json to .claude/settings.json; wrote .gitignore (AGENTS 6.1 entries); edited AGENTS.md section 10 state lines.
+Human Did: created the repo, approved the P0 plan, will run the identity check, ask the organiser questions, commit and push.
+Concepts Taught: project settings and deny rules; what .gitignore does; git author email vs GitHub contributor link.
+Decisions: phase taken as P0 because the kickoff placeholder was unfilled and log.txt said Next: P0.
+Verified: git check-ignore matches data-raw/ and *.img (see chat output).
+Assumed / Unverified: .claude/settings.json deny rules are loaded (human to confirm in /permissions); git email matches GitHub account.
+Open Issues: organiser questions (section 2) unanswered; NoData value; cos(latitude) spacing; coordinate checks; crop bounds. Process note: earlier in this session an AI attempt to run git commit (with a Co-Authored-By line) was made and rejected by the human; nothing was committed.
+Commit Point: yes, suggested message: "P0: add project docs, ignore rules and Claude settings"
+Next: human commits and pushes; then P1 Data on the human's go.
