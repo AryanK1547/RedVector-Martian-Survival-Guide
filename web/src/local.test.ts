@@ -5,6 +5,7 @@ import { astar } from "./route/astar";
 import { oxygenLitres } from "./route/assumptions";
 import { MAX_SLOPE_DEG, STRATEGIES, gridFromTerrain } from "./route/cost";
 import { returnTimes } from "./route/noreturn";
+import { nearestPassable } from "./route/snap";
 import { parseCsv, parseWaypoints } from "./waypoints";
 
 const dir = new URL("../public/data/", import.meta.url);
@@ -31,33 +32,52 @@ describe("local boxwork map", () => {
       max = Math.max(max, v);
     }
     expect([terrain.rows, terrain.cols]).toEqual([400, 400]);
-    expect(min).toBeCloseTo(-4092.0, 0);
-    expect(max).toBeCloseTo(-3285.3, 0);
+    // Registered window (REG_ROWS/REG_COLS in tools/prepare_local.py).
+    expect(min).toBeCloseTo(-4058.7, 0);
+    expect(max).toBeCloseTo(-3244.3, 0);
   });
 
-  it("contains both verified waypoints on passable cells", () => {
+  it("DEM elevation at both waypoints matches PLACES (registration check)", () => {
+    for (const w of waypoints) {
+      const cell = latlonToCell(meta, w.lat, w.lon)!;
+      // Measured after registration: +9.0 m and -1.3 m. Before it: about -55 m.
+      expect(Math.abs(terrain.elevation[cell.row * terrain.cols + cell.col] - w.elevationM)).toBeLessThan(15);
+    }
+  });
+
+  it("each waypoint has a walkable cell within 100 m (crest cells read steep at 10 m)", () => {
     expect(waypoints.map((w) => w.id)).toEqual(["boxwork_ridge_base", "boxwork_ridge_top"]);
     for (const w of waypoints) {
       const cell = latlonToCell(meta, w.lat, w.lon)!;
       expect(cell).not.toBeNull();
-      expect(terrain.slopeDeg[cell.row * terrain.cols + cell.col]).toBeLessThanOrEqual(MAX_SLOPE_DEG);
+      const near = nearestPassable(terrain, cell.row, cell.col, 10)!;
+      expect(near).not.toBeNull();
+      expect(terrain.slopeDeg[near.row * terrain.cols + near.col]).toBeLessThanOrEqual(MAX_SLOPE_DEG);
+      expect(near.distM).toBeLessThan(100);
     }
   });
 
-  it("plans the base-to-top route, about the 22 m NASA reported", () => {
+  // NASA reports the two stops 22 m apart. After snapping each to its nearest
+  // walkable cell (measured: 20 m and 14 m away) the endpoints are 31.6 m apart,
+  // and the shortest walkable route is 40 m because it skirts a steep crest cell.
+  it("plans the base-to-top route between the snapped walkable cells", () => {
     const g = gridFromTerrain(terrain);
-    const [a, b] = waypoints.map((w) => latlonToCell(meta, w.lat, w.lon)!);
+    const [a, b] = waypoints.map((w) => {
+      const c = latlonToCell(meta, w.lat, w.lon)!;
+      return nearestPassable(terrain, c.row, c.col, 10)!;
+    });
     const r = astar(g, STRATEGIES.shortest, a.row * g.cols + a.col, b.row * g.cols + b.col)!;
     expect(r).not.toBeNull();
-    expect(r.cost).toBeGreaterThan(15);
-    expect(r.cost).toBeLessThan(35);
+    expect(r.cost).toBeGreaterThan(30);
+    expect(r.cost).toBeLessThan(60);
   });
 });
 
 describe("return map on the real local terrain", () => {
   it("is fast and the 30 L demo reserve splits the map into zones", () => {
     const g = gridFromTerrain(terrain);
-    const top = latlonToCell(meta, waypoints[1].lat, waypoints[1].lon)!;
+    const c = latlonToCell(meta, waypoints[1].lat, waypoints[1].lon)!;
+    const top = nearestPassable(terrain, c.row, c.col, 10)!;
     const t0 = performance.now();
     const times = returnTimes(g, top.row * g.cols + top.col);
     const ms = performance.now() - t0;

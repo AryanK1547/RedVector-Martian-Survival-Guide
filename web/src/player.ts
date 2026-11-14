@@ -24,6 +24,7 @@ export class Player {
     private hud: HTMLElement,
     private lonLatOf: (cell: number) => LonLat,
     private follow: () => boolean,
+    private onDone: () => void = () => {},
   ) {}
 
   stop(): void {
@@ -69,6 +70,7 @@ export class Player {
         <div class="hud-alerts">${alerts.map((x) => `<div class="${x.level}">${x.text}</div>`).join("") || "<div class=\"ok\">All nominal</div>"}</div>
         <div class="hud-note">* model assumptions; reserve is a demo value</div>`;
       this.frame = s.done ? 0 : requestAnimationFrame(tick);
+      if (s.done) this.onDone();
     };
     this.frame = requestAnimationFrame(tick);
   }

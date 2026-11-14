@@ -10,8 +10,20 @@ import type { Waypoint } from "./waypoints";
 // and hand us its address.
 maplibregl.setWorkerUrl(workerUrl);
 
-export type Layer = "hillshade" | "slope" | "thermal";
-const LAYERS: Layer[] = ["hillshade", "slope", "thermal"];
+// Relief (hillshade) is always drawn at the bottom; the CTX photo sits on top
+// of it when chosen as the base, so gaps in the photo mosaic show relief, not
+// an empty background. Slope and thermal are semi-transparent overlays.
+export type Base = "photo" | "relief";
+export type Overlay = "slope" | "thermal";
+type Layer = "hillshade" | "ctx" | Overlay;
+const LAYERS: Layer[] = ["hillshade", "ctx", "thermal", "slope"];
+const PAINT: Record<Layer, Record<string, unknown>> = {
+  hillshade: { "raster-resampling": "linear" },
+  ctx: { "raster-resampling": "linear", "raster-contrast": 0.15 },
+  // THEMIS pixels are 100 m: smooth them rather than drawing 10x10-cell blocks.
+  thermal: { "raster-resampling": "linear", "raster-opacity": 0.55 },
+  slope: { "raster-resampling": "nearest", "raster-opacity": 0.6 },
+};
 
 // The image corners in [lon, lat] order: top-left, top-right, bottom-right,
 // bottom-left. MapLibre stretches the PNG over this quadrilateral.
@@ -39,17 +51,15 @@ export function createMap(container: HTMLElement, meta: Meta, base: string, attr
       layers: [{ id: "background", type: "background", paint: { "background-color": "#14090a" } }],
     },
     bounds: [c.lon_left, c.lat_bottom, c.lon_right, c.lat_top],
-    fitBoundsOptions: { padding: 20 },
+    // Keep the map between the left plan card and the right verdict card.
+    fitBoundsOptions: { padding: { top: 70, bottom: 20, left: 330, right: 360 } },
     maxBounds: [c.lon_left - padLon, c.lat_bottom - padLat, c.lon_right + padLon, c.lat_top + padLat],
     attributionControl: false,
   });
-  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
-  map.addControl(
-    new maplibregl.AttributionControl({
-      customAttribution: attribution,
-    }),
-    "bottom-right",
-  );
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+  // No ScaleControl: MapLibre measures on an Earth-sized globe, so on Mars
+  // coordinates its scale bar would be wrong by a factor of about 1.9.
+  map.addControl(new maplibregl.AttributionControl({ customAttribution: attribution, compact: true }), "bottom-right");
   map.on("load", () => {
     for (const name of LAYERS) {
       map.addSource(name, { type: "image", url: `${base}${name}.png`, coordinates: imageCorners(meta) });
@@ -58,7 +68,7 @@ export function createMap(container: HTMLElement, meta: Meta, base: string, attr
         type: "raster",
         source: name,
         layout: { visibility: name === "hillshade" ? "visible" : "none" },
-        paint: { "raster-resampling": "nearest" },
+        paint: PAINT[name] as never,
       });
     }
     raiseOverlays(map);
@@ -66,31 +76,35 @@ export function createMap(container: HTMLElement, meta: Meta, base: string, attr
   return map;
 }
 
+export function setBase(map: maplibregl.Map, base: Base): void {
+  map.setLayoutProperty("ctx", "visibility", base === "photo" ? "visible" : "none");
+}
+
+export function setOverlay(map: maplibregl.Map, overlay: Overlay, on: boolean): void {
+  map.setLayoutProperty(overlay, "visibility", on ? "visible" : "none");
+}
+
 // Layers draw in the order they were added. Whichever of the raster layers and
 // the route layers is added second would otherwise end up on top, so both
 // setup paths call this to put the route line and markers last.
 export function raiseOverlays(map: maplibregl.Map): void {
-  for (const id of ["return", "route-line", "points", "astronaut"]) {
+  for (const id of ["return", "route-glow", "route-line", "points", "astronaut"]) {
     if (map.getLayer(id)) map.moveLayer(id);
-  }
-}
-
-export function showLayer(map: maplibregl.Map, layer: Layer): void {
-  for (const name of LAYERS) {
-    map.setLayoutProperty(name, "visibility", name === layer ? "visible" : "none");
   }
 }
 
 const escapeHtml = (t: string) =>
   t.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]!);
 
-// One marker per science waypoint, with its NASA sources in a popup.
+// One labelled pin per science waypoint, with its NASA sources in a popup.
+// The two boxwork stops are 22 m apart, so labels alternate sides to stay readable.
 export function addWaypointMarkers(map: maplibregl.Map, waypoints: Waypoint[], dataBase = "data/"): maplibregl.Marker[] {
   const markers: maplibregl.Marker[] = [];
-  for (const w of waypoints) {
+  for (const [i, w] of waypoints.entries()) {
     const el = document.createElement("div");
-    el.className = "waypoint-marker";
+    el.className = `poi ${i % 2 ? "poi-right" : "poi-left"}`;
     el.title = w.name;
+    el.innerHTML = `<span class="poi-dot"></span><span class="poi-label">${escapeHtml(w.name)}</span>`;
     const popup = new maplibregl.Popup({ offset: 12, maxWidth: "320px" }).setHTML(
       `<strong>${escapeHtml(w.name)}</strong><br>
        Curiosity, sol ${w.sol}<br>
@@ -129,8 +143,8 @@ export function createOverviewMap(
     renderWorldCopies: false,
     attributionControl: false,
   });
-  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
-  map.addControl(new maplibregl.AttributionControl({ customAttribution: attribution }), "bottom-right");
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+  map.addControl(new maplibregl.AttributionControl({ customAttribution: attribution, compact: true }), "bottom-right");
   map.on("load", () => {
     map.addSource("mars", {
       type: "image",
@@ -141,8 +155,9 @@ export function createOverviewMap(
   });
   for (const s of info.sites) {
     const el = document.createElement("div");
-    el.className = "waypoint-marker";
+    el.className = `poi poi-right${s.region ? "" : " poi-muted"}`;
     el.title = s.name;
+    el.innerHTML = `<span class="poi-dot"></span><span class="poi-label">${escapeHtml(s.name)}</span>`;
     const box = document.createElement("div");
     box.innerHTML = `<strong>${escapeHtml(s.name)}</strong><br><small>${escapeHtml(s.source)}</small><br>`;
     if (s.region) {

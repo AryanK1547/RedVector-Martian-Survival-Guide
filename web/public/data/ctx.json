@@ -1,0 +1,9 @@
+{
+  "capabilities": "https://trek.nasa.gov/tiles/Mars/EQ/Gale_CTX_BlockAdj_dd/1.0.0/WMTSCapabilities.xml",
+  "coverage_percent": 23.9,
+  "dataset": "MRO CTX Gale Crater mosaic (Gale_CTX_BlockAdj_dd), NASA Mars Trek",
+  "kind": "visualization",
+  "metres_per_pixel_approx": 325.6,
+  "note": "optical image only; elevation and slope come from the DEM, not from this image",
+  "zoom_level": 7
+}

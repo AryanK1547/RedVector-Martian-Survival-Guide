@@ -232,10 +232,12 @@ At a limit: read the reset time in the message, switch to a smaller model, and u
 - P2 Route + map done in code: Vite app, MapLibre hillshade/slope overlay, A* in a Web Worker (checked against Dijkstra), click start/end, 3 strategies, stats panel, elevation profile. Slope limit 25 deg and walking/energy/oxygen model assumptions logged with sources. vitest 26/26.
 - Scope revised 14 Nov 21:30 (section 1, section 7): layered multi-mission data, local high-resolution map of the boxwork area, science waypoints, point-of-no-return; 3D cut to an optional preview.
 - P3 deployed (GitHub Pages live). P3b-P5 done in code (15 Nov, 06:00): 10 m boxwork map from the USGS MSL Gale 1 m DEM; verified waypoints from NASA PDS PLACES with Curiosity Navcam images; REMS and RAD conditions; THEMIS thermal inertia layer; point-of-no-return map; Level 1 replay with HUD; Mars overview. vitest 44/44, validate.py 8/8. Several commits pending; the live site is behind the local code until pushed.
-- Not done: CTX optical layer (needs a verified Mars Trek WMTS URL), injected-hazard replanning, 3D preview (optional cut).
-- Next: P6 stabilise (browser checks), P7 docs (README, qa.md, AI disclosure naming Claude Code, ChatGPT and Copilot).
+- P6 (14 Nov, 23:25 by the clock): CTX optical layer from NASA Mars Trek; DEM extract misregistration (about 840 m) found by phase correlation with CTX and corrected, now matching PLACES elevations to 9 m and 1.3 m; science stops snap to the nearest walkable cell; UI redesigned as a mission console with a GO / CAUTION / NO-GO verdict and science-time budget. vitest 51/51, validate.py 8/8. Commits pending.
+- P6b (14 Nov, 23:36 by the clock): live EVA simulation with astronaut suit display and mission control (calamities: rockfall, leak, dust, injury, solar particle event; options replanned from the current position; recommendation; 15 s decision window; mission log; seeded random runs); one data lens at a time with legend. vitest 58/58.
+- Not done: 3D preview (optional cut).
+- Next: human browser check of the redesign, commit and push; README team section and screenshots.
 
-Open issues: DEM elevations about 55 m below PLACES rover elevations (cause unconfirmed); UV discrepancy between sols (UV not shown); Gale centre values human-supplied; organiser question 1 (§2); submission link (given on-site). Resolved: NoData (none in MOLA), cos(latitude) spacing, coordinate conventions, crop bounds.
+Open issues: CTX-to-DEM residual below the correlation's resolution (about 150 m); UV discrepancy between sols (UV not shown); Gale centre values human-supplied; organiser question 1 (§2); submission link (given on-site). Resolved: the "55 m DEM offset" (it was an 840 m registration error, corrected); NoData (none in MOLA), cos(latitude) spacing, coordinate conventions, crop bounds.
 
 ---
 

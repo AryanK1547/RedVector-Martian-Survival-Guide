@@ -2,8 +2,8 @@
   "crop": {
     "center_waypoint": "boxwork_ridge_top",
     "cols": 400,
-    "dem_col0": 13125,
-    "dem_row0": 38009,
+    "dem_col0": 13965,
+    "dem_row0": 37949,
     "lat_bottom": -4.838330471052591,
     "lat_top": -4.7708480516201295,
     "lon_left": 137.34560163018995,
@@ -52,7 +52,7 @@
   },
   "source": {
     "dataset": "USGS MSL Gale Merged DEM 1m v3 (Calef and Parker 2016, PDS Annex), from NASA MRO HiRISE stereo",
-    "elevation_meaning": "DEM value as stored in the file, meters; about 55 m below PLACES rover elevations at the waypoints (datum difference suspected, not confirmed)",
+    "elevation_meaning": "DEM value as stored in the file, meters; window registered to the MOLA / PLACES frame by a measured offset of 840 m east and 60 m north (see REG_ROWS / REG_COLS)",
     "file": "https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/MSL/MSL_Gale_DEM_Mosaic_1m_v3.tif",
     "latitude_type": "planetocentric (sphere R = 3396190 m)",
     "longitude": "degrees east",

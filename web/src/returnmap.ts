@@ -2,15 +2,13 @@ import type { ImageSource, Map as MapLibreMap } from "maplibre-gl";
 import type { Terrain } from "./data";
 import { oxygenLitres } from "./route/assumptions";
 
-// Colours for the return-trip map. Alpha keeps the terrain visible underneath.
-const GREEN = [61, 220, 132, 90];
-const AMBER = [255, 200, 50, 110];
-const RED = [255, 77, 77, 120];
+// "Spotlight" return-range map: the terrain you can walk to and still get back
+// stays clear (lightly tinted); everything beyond the reserve is dimmed, so the
+// reachable area stands out without painting most of the map red.
+const COMFORT = [61, 220, 132, 45]; // back on under half the reserve
+const TIGHT = [255, 200, 50, 70]; // back on half to all of the reserve
+const OUT = [8, 4, 4, 150]; // beyond the reserve, or no way back at all
 
-// Shades every cell by the oxygen needed to walk back to the base:
-// green = under half the reserve, amber = up to the whole reserve,
-// red = more than the reserve (the astronaut could not get back from there),
-// clear = no way back (impassable or cut off).
 export class ReturnOverlay {
   private canvas = document.createElement("canvas");
   private ready = false;
@@ -37,7 +35,7 @@ export class ReturnOverlay {
       type: "raster",
       source: "return",
       layout: { visibility: "none" },
-      paint: { "raster-resampling": "nearest" },
+      paint: { "raster-resampling": "nearest", "raster-fade-duration": 0 },
     });
     this.ready = true;
   }
@@ -52,10 +50,8 @@ export class ReturnOverlay {
     const ctx = this.canvas.getContext("2d")!;
     const img = ctx.createImageData(this.terrain.cols, this.terrain.rows);
     for (let i = 0; i < times.length; i++) {
-      if (!Number.isFinite(times[i])) continue;
-      const need = oxygenLitres(times[i]);
-      const colour = need <= reserveL * 0.5 ? GREEN : need <= reserveL ? AMBER : RED;
-      img.data.set(colour, i * 4);
+      const need = Number.isFinite(times[i]) ? oxygenLitres(times[i]) : Infinity;
+      img.data.set(need <= reserveL * 0.5 ? COMFORT : need <= reserveL ? TIGHT : OUT, i * 4);
     }
     ctx.putImageData(img, 0, 0);
     (this.map.getSource("return") as ImageSource).updateImage({ url: this.canvas.toDataURL() });

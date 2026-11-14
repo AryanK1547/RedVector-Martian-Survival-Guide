@@ -17,6 +17,8 @@ import csv
 import json
 import math
 import struct
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -58,8 +60,18 @@ HILLSHADE_EXAGGERATION_LOCAL = 1.0  # 10 m cells already show relief; no exagger
 
 def fetch(start: int, length: int) -> bytes:
     req = urllib.request.Request(DEM_URL, headers={"Range": f"bytes={start}-{start + length - 1}"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return r.read()
+    for attempt in range(6):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return r.read()
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            # S3 answers 503 "slow down" under load, and long reads can time out;
+            # wait and retry. Other HTTP errors (403, 404) are real and re-raised.
+            if isinstance(e, urllib.error.HTTPError) and e.code < 500 or attempt == 5:
+                raise
+            print(f"  retry {attempt + 1} after {type(e).__name__}")
+            time.sleep(2**attempt)
+    raise RuntimeError("unreachable")
 
 
 def read_header() -> dict:
@@ -75,11 +87,24 @@ def read_header() -> dict:
     return tags
 
 
+# Registration correction, measured on 15 Nov (see log.txt). With the file's own
+# georeferencing, the DEM content sits about 840 m east and 60 m north of where
+# MOLA, the Mars Trek CTX mosaic and the PLACES rover positions put it:
+# - phase correlation of the DEM hillshade against Mars Trek CTX: 84 cells x 6 cells of 10 m;
+# - CTX itself agrees with MOLA at Gale scale (zero shift);
+# - at the shifted cells the DEM matches PLACES rover elevations within 9 m and 1.2 m,
+#   instead of about 55 m off.
+# So every lookup is moved by this many 1 m pixels.
+REG_ROWS = -60  # north
+REG_COLS = 840  # east
+
+
 def latlon_to_dem(lat: float, lon: float):
-    """(row, col) of the 1 m DEM pixel containing (lat, lon). Equirectangular, centre longitude 0."""
+    """(row, col) of the 1 m DEM pixel for (lat, lon) in the MOLA / PLACES frame.
+    Equirectangular, centre longitude 0, plus the registration correction above."""
     x = RADIUS_M * math.radians(lon)
     y = RADIUS_M * math.radians(lat)
-    return int((Y0 - y) // PIXEL_M), int((x - X0) // PIXEL_M)
+    return int((Y0 - y) // PIXEL_M) + REG_ROWS, int((x - X0) // PIXEL_M) + REG_COLS
 
 
 def load_waypoints() -> list[dict]:
@@ -135,13 +160,15 @@ def load_window(row0: int, col0: int) -> np.ndarray:
 
 
 def bounds(row0: int, col0: int) -> dict:
-    """Edges of the window in degrees (pixel corners, PixelIsArea)."""
+    """Edges of the window in degrees (pixel corners, PixelIsArea), in the corrected
+    MOLA / PLACES frame: the registration offset is removed before converting."""
     deg = lambda m: math.degrees(m / RADIUS_M)
+    r0, c0 = row0 - REG_ROWS, col0 - REG_COLS
     return {
-        "lat_top": deg(Y0 - row0 * PIXEL_M),
-        "lat_bottom": deg(Y0 - (row0 + WINDOW_M) * PIXEL_M),
-        "lon_left": deg(X0 + col0 * PIXEL_M),
-        "lon_right": deg(X0 + (col0 + WINDOW_M) * PIXEL_M),
+        "lat_top": deg(Y0 - r0 * PIXEL_M),
+        "lat_bottom": deg(Y0 - (r0 + WINDOW_M) * PIXEL_M),
+        "lon_left": deg(X0 + c0 * PIXEL_M),
+        "lon_right": deg(X0 + (c0 + WINDOW_M) * PIXEL_M),
     }
 
 
@@ -161,7 +188,7 @@ def build_assets(elev: np.ndarray, row0: int, col0: int) -> dict:
             "dataset": "USGS MSL Gale Merged DEM 1m v3 (Calef and Parker 2016, PDS Annex), from NASA MRO HiRISE stereo",
             "url": DEM_PAGE,
             "file": DEM_URL,
-            "elevation_meaning": "DEM value as stored in the file, meters; about 55 m below PLACES rover elevations at the waypoints (datum difference suspected, not confirmed)",
+            "elevation_meaning": "DEM value as stored in the file, meters; window registered to the MOLA / PLACES frame by a measured offset of 840 m east and 60 m north (see REG_ROWS / REG_COLS)",
             "latitude_type": "planetocentric (sphere R = 3396190 m)",
             "longitude": "degrees east",
         },
