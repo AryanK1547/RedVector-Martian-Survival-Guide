@@ -1,0 +1,4 @@
+html, body, #app { margin: 0; height: 100%; background: #14090a; color: #f0d9c8; font-family: system-ui, sans-serif; }
+#map { position: absolute; inset: 0; }
+#panel { position: absolute; top: 10px; left: 10px; max-width: 260px; padding: 10px 12px; background: rgba(20, 9, 10, 0.85); border: 1px solid #5a2a1c; border-radius: 6px; font-size: 14px; }
+#panel .note { font-size: 12px; opacity: 0.75; margin: 8px 0 0; }

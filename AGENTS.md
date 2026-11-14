@@ -224,7 +224,8 @@ At a limit: read the reset time in the message, switch to a smaller model, and u
 
 - Pre-event learning (not repo code): read the real MOLA file, coordinate math, slope v1 with an unresolved NoData problem.
 - Repo: created; kit files in place (AGENTS.md, CLAUDE.md, .claude/settings.json, .gitignore, log.txt). First human push pending.
-- Next: finish P0 (identity check, organiser questions, first push), then P1 Data.
+- P0 pushed. P1 Data done in code: tools/ (coords, prepare_data, validate 8/8 PASS), assets in web/public/data (about 290 KB). Awaiting human commit.
+- Next: P2 Route + map (slope threshold needs a written, sourced justification).
 
 Open issues: NoData value and masking; cos(latitude) spacing; coordinate convention checks; crop bounds; organiser answers (§2); submission link (given on-site).
 

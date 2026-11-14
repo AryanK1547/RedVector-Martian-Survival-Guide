@@ -4,9 +4,12 @@ Step 1 of P1: read the raw MOLA raster and check it matches what we verified.
 Later steps (NoData, crop, slope, export) are added to this file one at a time.
 """
 
+import io
+import json
 from pathlib import Path
 
 import numpy as np
+from PIL import Image
 
 from coords import METERS_PER_DEGREE, PIXEL_SIZE_M, PIXELS_PER_DEGREE, latlon_to_pixel
 

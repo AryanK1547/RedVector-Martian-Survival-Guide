@@ -1,0 +1,65 @@
+{
+  "crop": {
+    "center_lat": -5.37,
+    "center_lon": 137.81,
+    "center_source": "USGS Gazetteer of Planetary Nomenclature (human-supplied, not AI-verified)",
+    "center_verified_by_ai": false,
+    "col0": 4281,
+    "cols": 256,
+    "lat_bottom": -9.34375,
+    "lat_top": -1.34375,
+    "lon_left": 133.78125,
+    "lon_right": 141.78125,
+    "name": "Gale Crater region",
+    "row0": 2923,
+    "rows": 256
+  },
+  "files": {
+    "elevation.bin": {
+      "dtype": "<i2",
+      "order": "row-major, north row first",
+      "shape": [
+        256,
+        256
+      ],
+      "units": "meters"
+    },
+    "hillshade.png": {
+      "altitude_deg": 45.0,
+      "azimuth_deg": 315.0,
+      "kind": "visualization",
+      "note": "exaggeration is for contrast only; it is not applied to any data file",
+      "vertical_exaggeration": 3.0
+    },
+    "slope.bin": {
+      "degrees_per_step": 0.5,
+      "dtype": "uint8",
+      "note": "slope in degrees = value * degrees_per_step; computed at 1.85 km per pixel, so steep local terrain is under-stated",
+      "shape": [
+        256,
+        256
+      ]
+    },
+    "slope.png": {
+      "grayscale_max_degrees": 45.0,
+      "kind": "visualization"
+    }
+  },
+  "grid": {
+    "col_spacing_method": "pixel_size_m * cos(latitude of the row), latitude from the row's pixel center",
+    "nodata": null,
+    "nodata_note": "PDS label defines no missing-value constant; 0 m is valid elevation",
+    "pixel_convention": "grid edge at the upper-left corner; value assumed at pixel center",
+    "pixel_size_m": 1852.2306687,
+    "pixels_per_degree": 32,
+    "row_spacing_m": 1852.2306687
+  },
+  "source": {
+    "dataset": "MGS MOLA MEGDR topography, megt90n000fb (PDS Geosciences Node)",
+    "elevation_meaning": "planetary radius minus areoid (GMM3), meters",
+    "latitude_type": "planetocentric",
+    "longitude": "degrees east, 0-360",
+    "url": "https://pds-geosciences.wustl.edu/missions/mgs/megdr.html"
+  },
+  "version": 1
+}

@@ -4,6 +4,7 @@ Checks are added step by step through P1. Run from the repo root:
     python tools/validate.py
 """
 
+import json
 import math
 import random
 import sys
@@ -22,6 +23,8 @@ from coords import (
 from prepare_data import (
     CROP_SIZE,
     GALE_BBOX,
+    OUT_DIR,
+    build_assets,
     compute_slope,
     crop_bounds_degrees,
     crop_gale,
@@ -158,6 +161,35 @@ def check_slope_real_crop() -> bool:
     )
 
 
+def check_assets() -> bool:
+    """Exported files: present, small, readable, match the raster, repeatable."""
+    try:
+        full = load_raster()
+    except FileNotFoundError:
+        return report("assets: exported files are correct", False, "raw file missing")
+    expected = build_assets(full)
+    built_twice_equal = expected == build_assets(full)  # same input -> same bytes
+    on_disk_equal = all(
+        (OUT_DIR / name).exists() and (OUT_DIR / name).read_bytes() == data
+        for name, data in expected.items()
+    )
+    total = sum(len(data) for data in expected.values())
+    meta = json.loads(expected["meta.json"])
+    crop, _, _ = crop_gale(full)
+    elevation = np.frombuffer(expected["elevation.bin"], dtype="<i2").reshape(CROP_SIZE, CROP_SIZE)
+    elevation_ok = bool((elevation == crop).all())
+    shape_ok = meta["files"]["elevation.bin"]["shape"] == [CROP_SIZE, CROP_SIZE]
+    ok = (
+        built_twice_equal and on_disk_equal and elevation_ok and shape_ok
+        and total < 5_000_000
+    )
+    return report(
+        "assets: files match the raster, repeatable, under 5 MB",
+        ok,
+        f"{len(expected)} files, {total} bytes",
+    )
+
+
 def main() -> int:
     results = [
         check_pixel_size(),
@@ -167,6 +199,7 @@ def main() -> int:
         check_slope_synthetic(),
         check_slope_nan_borders(),
         check_slope_real_crop(),
+        check_assets(),
     ]
     print(f"{sum(results)}/{len(results)} checks passed")
     return 0 if all(results) else 1

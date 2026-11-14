@@ -109,3 +109,59 @@ Assumed / Unverified: Gale coordinates still human-supplied and unverified by th
 Open Issues: confirm Gale values against the USGS Gazetteer; organiser question 1; slope threshold (decided in P2 with a source).
 Commit Point: yes, suggested message: "P1: Gale crop and cos(latitude)-aware slope with validate checks"
 Next: step 6, cost grid and exported assets (elevation.bin, meta.json, hillshade.png, slope.png).
+
+## [2026-11-14T17:50:00+05:30] P1 step 6-7: asset export and validate.py complete
+
+Phase: P1 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: export small deterministic assets for the web app and finish validate.py
+AI Generated: hillshade, build_assets, write_assets, _gradients (refactor of compute_slope) in tools/prepare_data.py; check_assets in tools/validate.py; web/public/data/{elevation.bin, slope.bin, slope.png, hillshade.png, meta.json}; docs/qa.md (P1 judge Q&A); AGENTS.md section 10 state.
+Human Did: said "go ahead"; reviews, commits and pushes.
+Concepts Taught: typed binary arrays and dtype in meta.json; hillshade as dot product of surface normal and sun direction; deterministic output (same input, same bytes).
+Decisions: cost grid NOT exported; the slope threshold needs a written, sourced justification and is decided in P2 (slope.bin carries the raw slope). Extra file slope.bin (uint8, 0.5 deg per step) added next to the planned files so the app does not re-implement the slope math. Hillshade uses 3x vertical exaggeration for contrast, recorded in meta.json as visualization only.
+Verified: validate.py 8/8 PASS in about 1 s; exported total 291,470 bytes (limit about 5 MB); re-running the export gives byte-identical files (sha256 compared); elevation.bin equals the raster crop; I looked at hillshade.png: Gale crater with its central mound near the center of the image.
+Assumed / Unverified: Gale center and bounding box (human-supplied, not AI-verified); pixel-center convention; hillshade light direction and exaggeration are choices, not data.
+Open Issues: confirm Gale values on the USGS Gazetteer; organiser question 1; slope threshold (P2).
+Commit Point: yes, P1 done; suggested message: "P1: export Gale crop assets (elevation, slope, hillshade, meta) and complete validate checks"
+Next: P2 Route + map: Vite app, MapLibre image overlay, click start/end, A* worker. Plan mode first.
+
+## [2026-11-14T18:05:00+05:30] P2 step 1: Vite + TypeScript scaffold
+
+Phase: P2 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: empty static web app that builds
+AI Generated: web/package.json, web/tsconfig.json, web/index.html, web/src/main.ts; added dist/ to .gitignore; installed maplibre-gl, vite, typescript, vitest via npm.
+Human Did: approved the P2 plan; reviews and commits.
+Concepts Taught: Vite dev server and bundler; public/ copied as-is; tsc --noEmit as type check.
+Decisions: hand-written scaffold instead of the interactive generator, so every file is visible.
+Verified: npm run build passes (tsc + vite build). Versions installed: maplibre-gl 6.18.0, vite 8.3.8, typescript 7.0.2, vitest 5.1.0 (as reported by npm).
+Assumed / Unverified: dev server in a browser not yet viewed.
+Open Issues: none new.
+Commit Point: no (first commit point after step 3)
+Next: step 2, data loader.
+
+## [2026-11-14T18:25:00+05:30] P2 step 2: data loader
+
+Phase: P2 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: load the exported terrain into typed arrays and convert lat/lon to grid cells in TypeScript
+AI Generated: web/src/data.ts (parseTerrain, loadTerrain, latlonToCell, cellToLatlon), web/src/data.test.ts; added @types/node and "node" in web/tsconfig.json types (tests read files with node:fs).
+Human Did: said "go ahead"; reviews and commits.
+Concepts Taught: fetch + arrayBuffer + typed arrays (Int16Array, Uint8Array); shape and units read from meta.json; vitest.
+Decisions: slope.bin decoded to a Float32Array in degrees (value * degrees_per_step) so routing does not redo the slope math. Int16Array uses machine byte order; file is little-endian and target browsers are little-endian (noted in code).
+Verified: vitest 5/5 PASS and npm run build passes. Loaded shape 256x256, elevation -4593..2373 m (equals validate.py). Slope max 32 deg (31.8 rounded to the 0.5 deg step). Every cell round-trips lat/lon -> cell exactly (sampled), outside the crop returns null, Gale center (-5.37, 137.81) maps to cell (128, 128) as in prepare_data.py.
+Assumed / Unverified: browser fetch path (data/ relative URL) not yet run in a browser; arrays are tested via node fs only.
+Open Issues: none new.
+Commit Point: no (next: step 3, map overlay, is the commit point)
+Next: step 3, MapLibre map with the hillshade overlay.
+
+## [2026-11-14T18:50:00+05:30] P2 step 3: MapLibre map with hillshade and slope overlays
+
+Phase: P2 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: show the Gale crop on a MapLibre map from our own PNGs, no external tiles
+AI Generated: web/src/map.ts, web/src/main.ts, web/src/style.css, web/src/mercator.test.ts.
+Human Did: said "go"; opens http://localhost:5173 to look at it; reviews and commits.
+Concepts Taught: MapLibre image source (PNG stretched over four lat/lon corners); style with only a background layer; Web Mercator vs equirectangular rows.
+Decisions: maplibre-gl 6 has no default export, so the code uses "import * as maplibregl". Layer toggle hillshade/slope. Map is limited (maxBounds) to the crop plus 2 degrees. Credit line to NASA MGS/MOLA/PDS added as map attribution.
+Verified: npm run build passes; vitest 6/6 PASS. Measured Mercator stretch: worst offset 0.42 image rows (under one 1.85 km pixel), so click-to-cell mapping does not need a correction. Dev server returns 200 for index, meta.json, hillshade.png.
+Assumed / Unverified: the map has NOT been viewed in a browser by me (no browser here); the human must confirm Gale crater and its central mound appear and the toggle works. Bundle is 1.07 MB (MapLibre), build warns about chunk size; acceptable for now.
+Open Issues: human visual check of the map; Gale values and organiser question 1 still open.
+Commit Point: yes, suggested message: "P2: Vite app, terrain loader and MapLibre hillshade/slope overlay"
+Next: step 4, routing core (heap, cost, A*, Dijkstra) with tests; needs a sourced slope threshold.
