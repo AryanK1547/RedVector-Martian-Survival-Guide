@@ -291,3 +291,17 @@ Assumed / Unverified: point sampling can miss features smaller than 10 m (indivi
 Open Issues: commit the restore; datum offset; web app support for the local map (float32 elevation, region switch, waypoint markers); remaining source checks.
 Commit Point: yes, two commits suggested: "Fix: restore asset export in prepare_data.py (lost from P1 commit)" and "P4: local 10 m boxwork map from the USGS MSL Gale 1 m DEM"
 Next: web app: region switch (Gale overview / boxwork local), float32 loader, waypoint markers.
+
+## [2026-11-15T00:55:00+05:30] P4: region switch, local boxwork map in the app, waypoint markers
+
+Phase: P4 | Tool: Claude Code | Model: claude-opus-5-5
+Goal: use the 10 m boxwork map and the verified waypoints in the web app
+AI Generated: web/src/data.ts (dtype <i2 or <f4 from meta.json, elevation always Float32Array, cellSizeLabel), web/src/waypoints.ts (RFC 4180 CSV reader, waypoint loader), web/src/map.ts (region base path and attribution, padding scaled to the region, waypoint markers with escaped popups), web/src/main.ts (region switch with teardown of map and worker), web/src/route/client.ts (dispose), web/src/stats.ts (cell size in note, metres for short routes), web/src/local.test.ts, style.css.
+Human Did: approved; must check the region switch, markers and a route on the local map in the browser.
+Concepts Taught: data-driven loader (dtype in meta.json); tearing down a map and a worker before rebuilding; escaping text before putting it in HTML.
+Decisions: the app opens on the boxwork local map (the hyperlocal view the brief asks for); Gale overview stays as a second region. Popup shows the NASA quote that identifies each waypoint, the blog link and PLACES as position source.
+Verified: npm run build passes; vitest 30/30 PASS, including local map loads 400x400 float32 with -4092.0..-3285.3 m, both waypoints on passable cells, and A* shortest route base to top costs between 15 and 35 m (NASA blog: 21 m drive; PLACES distance 22.1 m). Dev server and dist include data/local/ and waypoints.csv.
+Assumed / Unverified: not seen in a browser by me.
+Open Issues: human browser check; datum offset; remaining source checks (THEMIS, CTX, REMS, RAD, Curiosity images); README AI disclosure must name ChatGPT.
+Commit Point: yes, suggested message: "P4: boxwork local map, region switch and NASA waypoint markers"
+Next: P3b remaining source checks, starting with THEMIS thermal inertia and a Curiosity image for the waypoints.

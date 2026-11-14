@@ -9,7 +9,7 @@ const init = (slope: Float32Array): InitMsg => ({
   type: "init",
   rows,
   cols,
-  elevation: new Int16Array(rows * cols),
+  elevation: new Float32Array(rows * cols),
   slopeDeg: slope,
   latTop: -5,
   pixelsPerDegree: 32,

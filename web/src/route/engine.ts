@@ -7,7 +7,7 @@ export interface InitMsg {
   type: "init";
   rows: number;
   cols: number;
-  elevation: Int16Array;
+  elevation: Float32Array;
   slopeDeg: Float32Array;
   latTop: number;
   pixelsPerDegree: number;

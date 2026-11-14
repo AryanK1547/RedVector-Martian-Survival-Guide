@@ -34,6 +34,12 @@ export class RouteClient {
     this.worker.postMessage(init);
   }
 
+  // Stops the worker thread; used when switching to another region.
+  dispose(): void {
+    this.worker.terminate();
+    this.pending.clear();
+  }
+
   plan(start: number, goal: number, strategy: StrategyName): Promise<PlannedRoute | null> {
     const id = this.nextId++;
     return new Promise((resolve) => {

@@ -1,17 +1,17 @@
 import { MAX_SLOPE_DEG } from "./route/cost";
 import type { RouteStep, RouteSummary } from "./route/steps";
 
-const km = (m: number) => (m / 1000).toFixed(1);
+const dist = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`);
 
 function hoursMinutes(s: number): string {
   const total = Math.round(s / 60);
   return `${Math.floor(total / 60)} h ${String(total % 60).padStart(2, "0")} min`;
 }
 
-export function renderStats(el: HTMLElement, s: RouteSummary): void {
+export function renderStats(el: HTMLElement, s: RouteSummary, cellSize: string): void {
   el.innerHTML = `
     <table>
-      <tr><td>Distance</td><td>${km(s.distanceM)} km</td></tr>
+      <tr><td>Distance</td><td>${dist(s.distanceM)}</td></tr>
       <tr><td>Ascent / descent</td><td>${Math.round(s.ascentM)} / ${Math.round(s.descentM)} m</td></tr>
       <tr><td>Steepest cell</td><td>${s.maxSlopeDeg.toFixed(1)}&deg; (limit ${MAX_SLOPE_DEG}&deg;)</td></tr>
       <tr><td>Walking time*</td><td>${hoursMinutes(s.timeS)}</td></tr>
@@ -19,7 +19,7 @@ export function renderStats(el: HTMLElement, s: RouteSummary): void {
       <tr><td>Oxygen used*</td><td>${Math.round(s.oxygenL)} L</td></tr>
     </table>
     <p class="note">* Model assumptions, not NASA mission values: 2.5 km/h on flat ground slowed on grades (Tobler),
-    234 kcal/h (Apollo EVA average), 4.8 kcal per litre O<sub>2</sub>. Slopes are averaged over 1.85 km cells.</p>`;
+    234 kcal/h (Apollo EVA average), 4.8 kcal per litre O<sub>2</sub>. Slopes are averaged over ${cellSize} cells.</p>`;
 }
 
 // Elevation (y) against distance along the route (x), drawn on a canvas.
@@ -58,8 +58,8 @@ export function drawProfile(canvas: HTMLCanvasElement, steps: RouteStep[] | null
   ctx.font = "10px system-ui, sans-serif";
   ctx.fillText(`${Math.round(hi)} m`, 2, pad.t + 8);
   ctx.fillText(`${Math.round(lo)} m`, 2, h - pad.b);
-  ctx.fillText("0 km", pad.l, h - 4);
+  ctx.fillText("0", pad.l, h - 4);
   ctx.textAlign = "right";
-  ctx.fillText(`${km(total)} km`, w - pad.r, h - 4);
+  ctx.fillText(dist(total), w - pad.r, h - 4);
   ctx.textAlign = "left";
 }

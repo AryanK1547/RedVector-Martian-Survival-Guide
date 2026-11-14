@@ -1,0 +1,53 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import { latlonToCell, parseTerrain, type Meta } from "./data";
+import { astar } from "./route/astar";
+import { MAX_SLOPE_DEG, STRATEGIES, gridFromTerrain } from "./route/cost";
+import { parseCsv, parseWaypoints } from "./waypoints";
+
+const dir = new URL("../public/data/", import.meta.url);
+const bytes = (name: string) => {
+  const b = readFileSync(new URL(name, dir));
+  return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
+};
+const meta = JSON.parse(readFileSync(new URL("local/meta.json", dir), "utf8")) as Meta;
+const terrain = parseTerrain(meta, bytes("local/elevation.bin"), bytes("local/slope.bin"));
+const waypoints = parseWaypoints(readFileSync(new URL("waypoints.csv", dir), "utf8"));
+
+describe("CSV reader", () => {
+  it("handles quoted fields with commas and escaped quotes", () => {
+    expect(parseCsv('a,b\n"x, y","say ""hi"""\n')).toEqual([["a", "b"], ["x, y", 'say "hi"']]);
+  });
+});
+
+describe("local boxwork map", () => {
+  it("loads float32 elevation with the values prepare_local.py reported", () => {
+    let min = Infinity;
+    let max = -Infinity;
+    for (const v of terrain.elevation) {
+      min = Math.min(min, v);
+      max = Math.max(max, v);
+    }
+    expect([terrain.rows, terrain.cols]).toEqual([400, 400]);
+    expect(min).toBeCloseTo(-4092.0, 0);
+    expect(max).toBeCloseTo(-3285.3, 0);
+  });
+
+  it("contains both verified waypoints on passable cells", () => {
+    expect(waypoints.map((w) => w.id)).toEqual(["boxwork_ridge_base", "boxwork_ridge_top"]);
+    for (const w of waypoints) {
+      const cell = latlonToCell(meta, w.lat, w.lon)!;
+      expect(cell).not.toBeNull();
+      expect(terrain.slopeDeg[cell.row * terrain.cols + cell.col]).toBeLessThanOrEqual(MAX_SLOPE_DEG);
+    }
+  });
+
+  it("plans the base-to-top route, about the 22 m NASA reported", () => {
+    const g = gridFromTerrain(terrain);
+    const [a, b] = waypoints.map((w) => latlonToCell(meta, w.lat, w.lon)!);
+    const r = astar(g, STRATEGIES.shortest, a.row * g.cols + a.col, b.row * g.cols + b.col)!;
+    expect(r).not.toBeNull();
+    expect(r.cost).toBeGreaterThan(15);
+    expect(r.cost).toBeLessThan(35);
+  });
+});
