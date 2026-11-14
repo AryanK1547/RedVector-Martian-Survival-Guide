@@ -70,7 +70,7 @@ export function createMap(container: HTMLElement, meta: Meta, base: string, attr
 // the route layers is added second would otherwise end up on top, so both
 // setup paths call this to put the route line and markers last.
 export function raiseOverlays(map: maplibregl.Map): void {
-  for (const id of ["return", "route-line", "points"]) {
+  for (const id of ["return", "route-line", "points", "astronaut"]) {
     if (map.getLayer(id)) map.moveLayer(id);
   }
 }
@@ -85,7 +85,8 @@ const escapeHtml = (t: string) =>
   t.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]!);
 
 // One marker per science waypoint, with its NASA sources in a popup.
-export function addWaypointMarkers(map: maplibregl.Map, waypoints: Waypoint[], dataBase = "data/"): void {
+export function addWaypointMarkers(map: maplibregl.Map, waypoints: Waypoint[], dataBase = "data/"): maplibregl.Marker[] {
+  const markers: maplibregl.Marker[] = [];
   for (const w of waypoints) {
     const el = document.createElement("div");
     el.className = "waypoint-marker";
@@ -100,6 +101,61 @@ export function addWaypointMarkers(map: maplibregl.Map, waypoints: Waypoint[], d
        <a href="${escapeHtml(w.identificationSource)}" target="_blank" rel="noopener">NASA blog</a> &middot;
        position: NASA PDS MSL PLACES`,
     );
-    new maplibregl.Marker({ element: el }).setLngLat([w.lon, w.lat]).setPopup(popup).addTo(map);
+    markers.push(new maplibregl.Marker({ element: el }).setLngLat([w.lon, w.lat]).setPopup(popup).addTo(map));
   }
+  return markers;
+}
+
+export interface OverviewInfo {
+  image: string;
+  bounds: { lon_left: number; lon_right: number; lat_top: number; lat_bottom: number };
+  sites: { id: string; name: string; lat: number; lon: number; region: string | null; source: string }[];
+}
+
+// Whole-planet view: one Web Mercator image of Mars and clickable site markers.
+export function createOverviewMap(
+  container: HTMLElement,
+  base: string,
+  info: OverviewInfo,
+  attribution: string,
+  openRegion: (id: string) => void,
+): maplibregl.Map {
+  const b = info.bounds;
+  const map = new maplibregl.Map({
+    container,
+    style: { version: 8, sources: {}, layers: [{ id: "background", type: "background", paint: { "background-color": "#14090a" } }] },
+    center: [137, 0],
+    zoom: 1.2,
+    renderWorldCopies: false,
+    attributionControl: false,
+  });
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+  map.addControl(new maplibregl.AttributionControl({ customAttribution: attribution }), "bottom-right");
+  map.on("load", () => {
+    map.addSource("mars", {
+      type: "image",
+      url: base + info.image,
+      coordinates: [[b.lon_left, b.lat_top], [b.lon_right, b.lat_top], [b.lon_right, b.lat_bottom], [b.lon_left, b.lat_bottom]],
+    });
+    map.addLayer({ id: "mars", type: "raster", source: "mars" });
+  });
+  for (const s of info.sites) {
+    const el = document.createElement("div");
+    el.className = "waypoint-marker";
+    el.title = s.name;
+    const box = document.createElement("div");
+    box.innerHTML = `<strong>${escapeHtml(s.name)}</strong><br><small>${escapeHtml(s.source)}</small><br>`;
+    if (s.region) {
+      const btn = document.createElement("button");
+      btn.textContent = "Open detailed map";
+      btn.addEventListener("click", () => openRegion(s.region!));
+      box.append(btn);
+    } else {
+      box.append("No local MarsWalk data yet.");
+    }
+    // Longitudes are 0-360 east in our data; MapLibre wants -180..180.
+    const lon = s.lon > 180 ? s.lon - 360 : s.lon;
+    new maplibregl.Marker({ element: el }).setLngLat([lon, s.lat]).setPopup(new maplibregl.Popup({ offset: 12 }).setDOMContent(box)).addTo(map);
+  }
+  return map;
 }

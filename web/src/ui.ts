@@ -1,6 +1,7 @@
 import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
 import { raiseOverlays } from "./map";
 import { cellToLatlon, latlonToCell, type Terrain } from "./data";
+import { Player } from "./player";
 import { ReturnOverlay } from "./returnmap";
 import { MAX_SLOPE_DEG, STRATEGIES, gridFromTerrain, type StrategyName } from "./route/cost";
 import type { RouteClient } from "./route/client";
@@ -25,15 +26,19 @@ export function setupRouting(
     strategy: HTMLSelectElement;
     reserve: HTMLInputElement;
     reset: HTMLButtonElement;
+    play: HTMLButtonElement;
+    follow: HTMLInputElement;
+    hud: HTMLElement;
   },
   onRoute: (steps: RouteStep[] | null) => void,
-): void {
+): () => void {
   let start: number | null = null;
   let goal: number | null = null;
   let steps: RouteStep[] | null = null;
   let times: Float64Array | null = null; // walking seconds back to the start, per cell
   let noReturnCell: number | null = null;
   let overlay: ReturnOverlay | null = null;
+  let player: Player | null = null;
   let token = 0; // bumped on every change so a slow, outdated result is ignored
   const grid = gridFromTerrain(terrain);
 
@@ -79,7 +84,9 @@ export function setupRouting(
         ? ({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: cells.map(lonLat) } } as never)
         : (empty as never),
     );
+    player?.stop();
     steps = cells ? buildSteps(grid, cells) : null;
+    controls.play.disabled = !steps || steps.length < 2;
     onRoute(steps);
     refreshSafety();
   };
@@ -111,6 +118,7 @@ export function setupRouting(
 
   const wire = () => {
     overlay = new ReturnOverlay(map, terrain);
+    player = new Player(map, controls.hud, lonLat, () => controls.follow.checked);
     map.addSource("route", { type: "geojson", data: empty as never });
     map.addSource("points", { type: "geojson", data: empty as never });
     map.addLayer({ id: "route-line", type: "line", source: "route", paint: { "line-color": "#ffd23f", "line-width": 3 }, layout: { "line-join": "round", "line-cap": "round" } });
@@ -124,6 +132,13 @@ export function setupRouting(
         "circle-stroke-color": "#ffffff",
         "circle-stroke-width": 2,
       },
+    });
+    map.addSource("astronaut", { type: "geojson", data: empty as never });
+    map.addLayer({
+      id: "astronaut",
+      type: "circle",
+      source: "astronaut",
+      paint: { "circle-radius": 8, "circle-color": "#ffffff", "circle-stroke-color": "#1e90ff", "circle-stroke-width": 3 },
     });
     raiseOverlays(map);
     clear();
@@ -159,6 +174,10 @@ export function setupRouting(
   controls.strategy.addEventListener("change", () => void plan());
   controls.reserve.addEventListener("input", refreshSafety);
   controls.reset.addEventListener("click", clear);
+  controls.play.addEventListener("click", () => {
+    if (steps && times) player?.start(steps, times, Number(controls.reserve.value) || 0.001);
+  });
+  return () => player?.stop();
 }
 
 export const strategyNames = Object.keys(STRATEGIES) as StrategyName[];

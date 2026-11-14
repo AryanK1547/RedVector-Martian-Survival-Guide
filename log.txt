@@ -361,3 +361,45 @@ Assumed / Unverified: colour ramp is my visual choice (ASU legend gives 90..785 
 Open Issues: decision on the Mars-wide proposal; Mars Trek CTX layer needs a verified WMTS URL; datum offset; README AI disclosure must name ChatGPT.
 Commit Point: yes, suggested message: "P4: THEMIS thermal inertia layer from Mars Odyssey"
 Next: per the lead decision on scope.
+
+## [2026-11-15T04:50:00+05:30] P5: Level 1 mission replay with helmet HUD
+
+Phase: P5 | Tool: Claude Code | Model: claude-opus-5-5
+Goal: replay a planned route as a mission with live suit readings and alerts
+AI Generated: web/src/route/replay.ts (stateAt, alertsFor), web/src/route/replay.test.ts, web/src/player.ts (Player: astronaut marker, follow camera, HUD), ui.ts wiring (Play mission button, Follow checkbox, astronaut layer, returns a stop function), main.ts (HUD element, teardown stops the replay), style.css HUD styles.
+Human Did: approved the sequence replay -> Mars overview -> CTX.
+Concepts Taught: requestAnimationFrame animation loop; interpolating a position between route cells; one RouteStep list feeding stats, profile and HUD.
+Decisions: every walk replays in about 20 s (speed shown as xN). HUD shows EVA clock, distance, elevation, slope, oxygen left (reserve minus used), oxygen to return from the current cell, and alerts. Caution thresholds are display choices (80% of reserve committed, 80% of the 25 deg slope limit), stated in code; TURN BACK when used + return exceeds the reserve (same rule as the point-of-no-return check).
+Verified: tsc clean, build passes, vitest 44/44 (replay starts at step 0 and ends at the last step, matches every step at its own time, interpolates halfway correctly, alerts quiet / caution / turn-back / steep cases).
+Assumed / Unverified: not seen in a browser by me (animation smoothness, HUD layout, follow camera).
+Open Issues: browser check; Mars overview next; CTX layer needs a verified Mars Trek WMTS URL; docs.
+Commit Point: yes, suggested message: "P5: Level 1 mission replay with HUD and turn-back alerts"
+Next: Mars overview region (global MOLA, reprojected to Web Mercator) with the Gale site marked.
+
+## [2026-11-15T05:30:00+05:30] P5/P6: Mars overview region (global MOLA in Web Mercator)
+
+Phase: P5/P6 | Tool: Claude Code | Model: claude-opus-5-5
+Goal: show the whole planet as an entry point, with the verified Gale site and an honest note on coverage
+AI Generated: tools/prepare_mars.py; web/public/data/mars/{mars.jpg, mars.json}; createOverviewMap in web/src/map.ts; overview region and showOverview in web/src/main.ts.
+Human Did: approved the sequence replay -> Mars overview -> CTX instead of a Mars-wide rebuild.
+Concepts Taught: why a global equirectangular image must be reprojected for a Web Mercator map; block-mean downsampling.
+Decisions: MOLA block mean 8x8 (4 px/deg, about 15 km), hillshade with 20x exaggeration and an elevation colour ramp (visualization only), reprojected row by row to Web Mercator (+-85.0511 deg), 1440x1440 JPEG. Sites: boxwork_ridge_top (PLACES, opens the boxwork map) and Jezero marked APPROXIMATE at 18 N, 77 E because the only NASA source found (JPL Mars 2020 press kit) gives roughly 18 N, 77 E; more precise values found only on Wikipedia copies, not used. Overview has no routing; the panel says detailed data exists only for Gale today.
+Verified: downsampled 1440x720, elevation -8045..21123 m; mars.jpg 348,152 bytes; I looked at it: north at top, Tharsis, Olympus Mons, Valles Marineris, Hellas, Argyre and Elysium in the expected places. Build passes, vitest 44/44.
+Assumed / Unverified: not seen in the browser by me; polar areas are blocky (Mercator stretch of few source rows).
+Open Issues: CTX optical layer needs a verified Mars Trek WMTS URL from the human; datum offset; docs (README, qa.md, AI disclosure naming ChatGPT).
+Commit Point: yes, suggested message: "P5: Mars overview with verified Gale site"
+Next: CTX layer if the URL arrives; otherwise P6 stabilise and P7 docs.
+
+## [2026-11-15T06:15:00+05:30] P6/P7: fixes from the Copilot audit; docs brought up to date
+
+Phase: P6/P7 | Tool: Claude Code | Model: claude-opus-5-5 (audit by GitHub Copilot, pasted by the human)
+Goal: fix confirmed issues from the audit and update stale docs
+AI Generated: waypoint list with fly-to in web/src/main.ts (addWaypointMarkers now returns markers), smaller markers in style.css; README.md rewritten (features, 4 missions / 6 data kinds table, limits, setup for all tools, AI disclosure naming Claude Code, ChatGPT and GitHub Copilot); SETUP_GUIDE.md section D (commit after each major section, hourly rule dropped) and question 2 resolved; AGENTS.md section 10 state and open issues; docs/qa.md P3b-P5 section (8 Q&A).
+Human Did: ran a GitHub Copilot audit of the running app and pasted its findings.
+Concepts Taught: none new.
+Decisions: overlapping markers (22 m apart, about 3 px at the initial zoom) fixed with a panel list that flies to zoom 18 and opens the chosen popup, instead of shifting markers off their true positions. Team names and screenshots stay TODO for the team. Copilot audit confirmed: app flows work locally; live site is behind because commits are pending; CTX layer and injected-hazard replanning not built.
+Verified: build passes, vitest 44/44 after the marker change.
+Assumed / Unverified: fly-to behaviour not seen in a browser by me.
+Open Issues: team must commit and push so the live site catches up; README team section, screenshots, demo video; datum offset; CTX URL.
+Commit Point: yes, suggested message: "P6: waypoint list fixes overlapping markers; docs updated (README, qa, setup, state)"
+Next: human commits and pushes; then browser check of the live site and screenshots.

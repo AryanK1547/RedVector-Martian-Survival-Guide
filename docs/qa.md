@@ -36,3 +36,29 @@ A: They are labelled model assumptions. Flat walking speed is 2.5 km/h, below th
 
 **Q: Does the map projection distort your clicks?**
 A: MapLibre stretches our image in Web Mercator, but the data rows are evenly spaced in latitude. We measured the worst mismatch at 0.42 of a pixel, so clicks land on the correct cell.
+
+## P3b-P5 Layers, local map, safety, replay
+
+**Q: Which NASA missions and data kinds does MarsWalk combine?**
+A: Four missions: Mars Global Surveyor (MOLA topography), Mars Reconnaissance Orbiter (a 1 m elevation model built from HiRISE stereo, by USGS), Mars Odyssey (THEMIS thermal inertia), and Curiosity (rover positions, Navcam images, REMS weather, RAD radiation). That gives six data kinds: topography, thermal, optical images, positions, atmosphere and radiation.
+
+**Q: Why not just use the whole Gale map at 1.85 km?**
+A: The brief asks for hyperlocal maps, not regional ones. At 1.85 km per cell, Gale has almost no slopes above 25 degrees (35 of 65,536 cells). On our 10 m boxwork map, 14% of cells are steeper than 25 degrees. A walk planned on the coarse map would miss real hazards.
+
+**Q: How did you get a 1 m elevation model into a static website?**
+A: The USGS file is 3.87 GB. It stores each row separately, so we downloaded only every tenth row of our 4 km window with HTTP range requests (31 MB) and kept every tenth column. That gives 10 m cells. We did not average, so features smaller than 10 m can be missed.
+
+**Q: How do you know the waypoints are real?**
+A: The positions come from NASA's PLACES rover localization archive. The names come from NASA's Curiosity blog posts for sols 4600-4603, which describe the rover at the base and then the top of the ridge leading to the main boxwork region. The two positions are 22 m apart; the blog planned a 21 m drive. The Navcam image file name for sol 4598 contains the same site and drive number as the waypoint.
+
+**Q: What is the point-of-no-return map?**
+A: From the base, we run Dijkstra backwards and get the walking time back from every cell. It runs backwards because walking uphill is slower, so the way back costs differently from the way out. Each cell's colour shows the oxygen needed to return, compared with the reserve. Along a route, the point of no return is the first cell where oxygen already used plus oxygen to return exceeds the reserve.
+
+**Q: Are the oxygen numbers real suit values?**
+A: No, and the app says so. Walking speed, metabolic rate and oxygen per kilocalorie are model assumptions with cited sources. The 30 L reserve is a demo value chosen so the effect is visible on a 4 km map.
+
+**Q: What do the conditions and radiation numbers mean?**
+A: They are Curiosity's own measurements on the sols it stood at the waypoints (July 2025): air temperature and pressure from REMS, and the dose rate in RAD's silicon detector, about 168 microgray per day. They are historical context, not a forecast, and the radiation figure is a detector dose, not a body dose.
+
+**Q: What is not verified or still uncertain?**
+A: The 1 m elevation model reads about 55 m lower than the rover's own elevation records at the waypoints. That suggests a different height reference, but we have not confirmed the cause, so we never mix the two. THEMIS thermal inertia is the qualitative version and is used for display only.

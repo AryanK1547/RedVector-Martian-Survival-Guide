@@ -52,14 +52,15 @@ Habits that save the most:
 6. If you hit the limit: do human tasks (README, screenshots, judge Q&A, testing) until the reset. A teammate on another account can also keep going, and any AI tool use must be disclosed in the README.
 7. Use this chat (or Haiku) for pure concept questions; both draw from the same pool, so keep them short.
 
-## D. Hourly push routine (human)
+## D. Commit and push routine (human)
 
-Every hour, on the hour:
+The organisers dropped the hourly push rule on 14 Nov (see AGENTS.md §2 and log.txt). Commit and push after each major section is finished:
 1. `git status` and look at what changed.
-2. `git add -A`, then `git commit -m "<short, true description of this hour's work>"`.
-3. `git push`.
-4. Ask Claude (Haiku) to write the log entry if it did not already.
-Set a phone alarm for every hour. Overnight, small real steps are fine (a test, a doc, one fix). Never fake a commit.
+2. `git add -A`, then `git commit -m "<short, true description of the work>"`.
+3. `git log -3 --format=%B` and check there is no AI or co-author text.
+4. `git push`.
+5. Ask Claude to write the log entry if it did not already.
+Small real steps are fine (a test, a doc, one fix). Never fake a commit.
 
 ## E. Deployment (GitHub Pages, no commits created by a bot)
 
@@ -68,6 +69,6 @@ In the repo: Settings -> Pages -> Source: GitHub Actions. Claude writes `.github
 ## F. Questions to ask the organisers early
 
 1. Is re-creating our own earlier learning code (reading the MOLA file, coordinate math) inside the window acceptable if we disclose it? Safest path: re-write it fresh in the repo with Claude's help and disclose.
-2. How should hourly pushes work overnight?
+2. (Resolved 14 Nov: no hourly push rule; commit after each major section.)
 
 Contacts are in the handbook (nasaspaceappsnagpur26@gmail.com, local lead listed on page 5).

@@ -1,0 +1,30 @@
+{
+  "bounds": {
+    "lat_bottom": -85.0511287798,
+    "lat_top": 85.0511287798,
+    "lon_left": -180.0,
+    "lon_right": 180.0
+  },
+  "image": "mars.jpg",
+  "projection": "Web Mercator (resampled from MOLA equirectangular, nearest neighbour)",
+  "sites": [
+    {
+      "id": "boxwork",
+      "lat": -4.804603677,
+      "lon": 137.379357484,
+      "name": "Mount Sharp boxwork, Gale Crater (Curiosity)",
+      "region": "boxwork",
+      "source": "NASA PDS MSL PLACES (verified waypoint boxwork_ridge_top)"
+    },
+    {
+      "id": "jezero",
+      "lat": 18.0,
+      "lon": 77.0,
+      "name": "Jezero Crater (Perseverance) - approximate",
+      "region": null,
+      "source": "NASA JPL Mars 2020 press kit: landing site at roughly 18 N, 77 E (rounded; no local data in MarsWalk yet)"
+    }
+  ],
+  "source": "NASA MGS MOLA MEGDR megt90n000fb, PDS Geosciences Node, block-mean to 4 px/deg (about 15 km)",
+  "visualization": "colour = elevation, shading = hillshade with 20.0x vertical exaggeration; not data"
+}

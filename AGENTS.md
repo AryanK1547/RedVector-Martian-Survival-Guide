@@ -231,9 +231,11 @@ At a limit: read the reset time in the message, switch to a smaller model, and u
 - P0 pushed. P1 Data done in code: tools/ (coords, prepare_data, validate 8/8 PASS), assets in web/public/data (about 290 KB). Awaiting human commit.
 - P2 Route + map done in code: Vite app, MapLibre hillshade/slope overlay, A* in a Web Worker (checked against Dijkstra), click start/end, 3 strategies, stats panel, elevation profile. Slope limit 25 deg and walking/energy/oxygen model assumptions logged with sources. vitest 26/26.
 - Scope revised 14 Nov 21:30 (section 1, section 7): layered multi-mission data, local high-resolution map of the boxwork area, science waypoints, point-of-no-return; 3D cut to an optional preview.
-- Next: P3 Deploy early, then P3b source checks.
+- P3 deployed (GitHub Pages live). P3b-P5 done in code (15 Nov, 06:00): 10 m boxwork map from the USGS MSL Gale 1 m DEM; verified waypoints from NASA PDS PLACES with Curiosity Navcam images; REMS and RAD conditions; THEMIS thermal inertia layer; point-of-no-return map; Level 1 replay with HUD; Mars overview. vitest 44/44, validate.py 8/8. Several commits pending; the live site is behind the local code until pushed.
+- Not done: CTX optical layer (needs a verified Mars Trek WMTS URL), injected-hazard replanning, 3D preview (optional cut).
+- Next: P6 stabilise (browser checks), P7 docs (README, qa.md, AI disclosure naming Claude Code, ChatGPT and Copilot).
 
-Open issues: NoData value and masking; cos(latitude) spacing; coordinate convention checks; crop bounds; organiser answers (§2); submission link (given on-site).
+Open issues: DEM elevations about 55 m below PLACES rover elevations (cause unconfirmed); UV discrepancy between sols (UV not shown); Gale centre values human-supplied; organiser question 1 (§2); submission link (given on-site). Resolved: NoData (none in MOLA), cos(latitude) spacing, coordinate conventions, crop bounds.
 
 ---
 
