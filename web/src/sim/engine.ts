@@ -160,7 +160,7 @@ export class Sim {
   private litres(seconds: number): number {
     return oxygenLitres(seconds) * this.o2Factor;
   }
-  private note(kind: LogEntry["kind"], text: string) {
+  note(kind: LogEntry["kind"], text: string) {
     this.log.push({ t: this.t, kind, text });
   }
 

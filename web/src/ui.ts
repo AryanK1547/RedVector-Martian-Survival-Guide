@@ -48,6 +48,8 @@ export interface RoutingController {
   // While locked (simulation running), map clicks do not move the base or goal.
   lock(on: boolean): void;
   lonLat(idx: number): [number, number];
+  // Run cb once the route layers exist and the initial reset has happened (now, if already).
+  whenReady(cb: () => void): void;
 }
 
 // Click 1 = base (where the walk starts and must end), click 2 = destination
@@ -179,6 +181,8 @@ export function setupRouting(
     view.stage("base");
   };
 
+  let wired = false;
+  const readyQueue: (() => void)[] = [];
   const wire = () => {
     overlay = new ReturnOverlay(map, terrain);
     player = new Player(map, opts.hud, lonLat, opts.follow, () => view.stage("route"));
@@ -206,6 +210,8 @@ export function setupRouting(
     });
     raiseOverlays(map);
     reset();
+    wired = true;
+    readyQueue.splice(0).forEach((cb) => cb());
   };
   if (map.isStyleLoaded()) wire();
   else map.once("load", wire);
@@ -254,6 +260,10 @@ export function setupRouting(
       locked = on;
     },
     lonLat,
+    whenReady: (cb) => {
+      if (wired) cb();
+      else readyQueue.push(cb);
+    },
   };
 }
 

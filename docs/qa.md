@@ -75,5 +75,45 @@ A: It is a training scenario: partway out, the astronaut notices something off t
 **Q: Does the planner check that the destination and the way home are still reachable from the find?**
 A: Yes. For each answer it runs A* on the real terrain for every leg (astronaut to find, find to destination, destination to base) and adds up walking time and oxygen. For the find it also shows the state on arrival: oxygen left after inspecting, and what going straight home from the find would cost. If any leg has no walkable route, for example after a rockfall, that answer is shown as unreachable rather than hidden. The find can be placed by hand or left random; both go through the same planner.
 
+**Q: What is the Mars mission start screen, and is any of it real?**
+A: It is the entry point: an airlock scene with an Earth uplink, then the EVA tab with the mission loaded. The data files listed in the uplink panel are really fetched (with real sizes), but the timing is paced for effect, the Earth link is simulated and the real Earth to Mars delay is not, and the suit ID, sol number, cabin pressure and scenery are cosmetic. The horizon in the door window is drawn from rows of the local elevation model. Suit battery is shown as "not modelled" because we have no battery data. The round-trip preview is computed on the real terrain with the same A* and oxygen model as the app. The three scenarios are demo settings, not NASA data.
+
 **Q: Why does the app give a verdict instead of just showing data?**
 A: An astronaut needs a decision, not a layer stack. MarsWalk turns the route, the walk back from every cell and the oxygen reserve into GO, CAUTION or NO-GO, plus the minutes of science time left at the destination before the walk back must start. The thresholds are the reserve (a demo value), the 25 degree slope limit, and an 80% caution line, which is our display choice.
+
+**Q: Is the 3D walk real terrain, and what in it is invented?**
+A: The ground is the local USGS DEM (made from HiRISE stereo) at one vertex per 10 m cell, at true vertical scale, draped with the CTX photo; the route, the oxygen numbers and every decision come from the same engine as the 2D map. Invented for looks, and labelled: rocks, the fine surface grain, the sun position and sky colour, the dust tint on the greyscale CTX photo, the airlock room, the platform and ramp. The view through the airlock door is the real terrain, turned to the most open heading computed from the DEM skyline.
+
+**Q: Why does the airlock depressurise to 743 Pa, and why mention 6.3 kPa?**
+A: 743 Pa is the mean air pressure Curiosity's REMS measured on sol 4598 at the boxwork waypoint (conditions.json). The habitat's 101.3 kPa is our assumption (Earth sea level). 6.3 kPa is the Armstrong limit, below which water boils at body temperature; we show it so the viewer sees why the suit is the only thing keeping the astronaut alive. It is general physiology, not a MarsWalk calculation.
+
+**Q: What do the two roles change?**
+A: Not the physics. Both run the same Sim engine. As the EVA astronaut you start in first person, calamities strike without warning and you cannot trigger them, and CAPCOM's recommendation is shown while you decide. As Mission Control you start in the overview, can inject calamities, and advise each call. Multiplayer, a separate Science Officer seat and a Mission Director were left out: the app is static with no server, and those roles would add screens without new decisions. The Science Officer and Earth appear as radio voices instead.
+
+**Q: Is the sound what Mars sounds like?**
+A: No. It is designed simulation audio made with the Web Audio API, no recordings. One idea from real science shapes it: Mars's thin carbon-dioxide air carries sound weakly, high pitches worst, so outside sounds (wind, grit, the crunch of steps) go through a muffling filter, while sounds that reach you through the suit (breath, boot thumps, fans) stay clear. In the airlock, room sounds fade as the air is pumped out, because sound needs air.
+
+**Q: What is the black box?**
+A: The after-action review at the end of a run: oxygen left against oxygen needed to get home over time (the gap is the margin), every calamity marked, every call with who made it and whether it matched the suit computer, and two or three lessons computed from the run, such as the tightest margin and when it happened.
+
+**Q: Why two views (simulated 3D and educational 2D)?**
+A: They answer different needs. The 3D walk is for feeling the mission: first person, sound, the airlock. The 2D map is for studying it: top-down terrain, route, trail and the elevation profile side by side, light on the computer. Both run the same engine, so a run, its decisions and its numbers are identical; only the drawing changes. The choice appears when you press Commence.
+
+**Q: How can the route be edited, and what stops a bad edit?**
+A: Before Begin you can pick a strategy (Shortest, Balanced, Safest) or add up to 3 waypoints by clicking the ground. Each click is snapped to walkable ground, then A* plans base to waypoint to destination on the real terrain; if any leg has no walkable path the edit is refused with a message. The plan line is recomputed, and it says plainly when the oxygen is not enough. The edit restarts the run from zero (same seed), so random calamities stay the same for comparison.
+
+**Q: What are the mission tasks, and are they real?**
+A: They are scenario tasks modelled on what a science EVA involves: check-ins on the way, then observation work (photograph, sample, sensor readings, report), then sealing the airlock. The slope and oxygen numbers in the check-ins are computed from the real terrain and the live simulation. The split of the observation minutes between tasks (20, 35, 25, 20 percent) is a scenario choice, not a NASA timeline. The notes attached to them are general context (for example that Perseverance is caching samples, and why Earth reports take minutes), kept qualitative.
+
+**Q: Why does the decision take over the screen?**
+A: A decision with a timer should not be squeezed into a 370 px sidebar. The card shows what happened, why it matters, and each option with three plain numbers and a verdict, with a countdown dial, an alert tone and a tick every second so it cannot be missed. One +15 s extension is allowed per decision; if the timer still runs out, the suit computer takes the recommendation and the black box records that nobody made the call.
+
+**Q: What does the Educational view teach, and can its numbers be trusted?**
+A: It explains the route instead of only drawing it: how the route breaks into sections of similar slope, how each section's time and oxygen are built (grade, then Tobler speed, then time, then oxygen at 234 kcal/h and 4.8 kcal per litre), why the way back costs differently from the way out, what the three strategies trade (metres and litres against steep ground), and how the map itself was made. Its numbers come from the same functions the simulation calls (moveTimeS, stepCost, oxygenLitres, the backwards Dijkstra), and unit tests check that section times add up to the route total, that each strategy's route is cheapest under its own formula, and that the shown speed formula matches the engine's.
+
+**Q: Why is the walk back not just the walk out reversed in cost?**
+A: Walking speed depends on the grade and its direction. Tobler's hiking function (an Earth model we borrow) is fastest on a gentle downhill of about 5 percent, slower uphill and slower on steep downhill. So a route that climbs on the way out is quicker coming home, and one that descends on the way out costs more coming home. That is why the return reserve is computed backwards from the base for every cell, not by doubling the outward trip.
+
+**Q: What are the "more sources we can add"?**
+A: Data portals the team noted for later: the NASA Open Data portal (datasets tagged mars), ISRO's ISSDC archive with Mars Orbiter Mission data and the VEDAS Mars Atlas, the USGS Astrogeology Science Center, the ASU Mars Space Flight Facility, and the Mars Climate Database (LMD, ESA, CNES). The app already uses a USGS elevation model and ASU THEMIS data; the others are listed only, and no number in the app comes from them yet.
+

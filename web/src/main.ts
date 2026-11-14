@@ -1,11 +1,15 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { loadConditions, renderConditions, type Conditions } from "./conditions";
 import { cellSizeLabel, loadTerrain } from "./data";
-import { addWaypointMarkers, createMap, createOverviewMap, setBase, setOverlay, type Base, type Overlay, type OverviewInfo } from "./map";
+import { addWaypointMarkers, createMap, setBase, setOverlay, type Base, type Overlay } from "./map";
 import { RouteClient } from "./route/client";
 import type { StrategyName } from "./route/cost";
 import { drawProfile, renderTraverse, renderVerdict } from "./stats";
+import { createSuitAudio, type SuitAudio } from "./audio";
+import type { Stage } from "./sim/stage";
+import { createMapStage } from "./sim/stage2d";
 import { startSim } from "./sim/view";
+import { MISSION, showStart, type Preset, type Role } from "./start";
 import { setupRouting, strategyNames, type RouteResult } from "./ui";
 import { loadWaypoints, type Waypoint } from "./waypoints";
 import "./style.css";
@@ -16,18 +20,18 @@ interface Region {
   label: string;
   base: string; // folder under public/ holding meta.json, elevation.bin, slope.bin and PNGs
   attribution: string;
-  kind?: "overview"; // overview = whole-planet picture with site markers, no routing
+  kind?: "start"; // start = the mission start screen (airlock, uplink, scenario), no map
   eva?: false; // regional map: routing only; no oxygen verdict, return range or live simulation
 }
 
 const REGIONS: Region[] = [
   {
     id: "mars",
-    tab: "Mars",
-    label: "Mars overview (MOLA, about 15 km)",
-    base: "data/mars/",
-    attribution: "Terrain: NASA MGS MOLA MEGDR, PDS Geosciences Node. Colour and shading are our own visualization.",
-    kind: "overview",
+    tab: "Mars mission",
+    label: "Mission start: Earth uplink, mission package and scenario",
+    base: "data/",
+    attribution: "",
+    kind: "start",
   },
   {
     id: "gale",
@@ -98,43 +102,37 @@ function setStep(bar: HTMLElement, step: number) {
   });
 }
 
-async function showOverview(app: HTMLElement, region: Region, go: (r: Region) => void) {
-  const info: OverviewInfo = await (await fetch(region.base + "mars.json")).json();
-  app.textContent = "";
-  const mapEl = el(`<div id="map"></div>`);
-  app.append(mapEl);
-  const map = createOverviewMap(mapEl, region.base, info, region.attribution, (target) => {
-    const next = REGIONS.find((r) => r.id === target);
-    if (next) go(next);
-  });
-  teardown = () => map.remove();
-  topbar(app, region, go, false);
-  const left = el(`<aside id="left" class="card">
-      <h2>Choose an EVA site</h2>
-      <p class="lead">MarsWalk plans a single Marswalk: where an astronaut can safely go, how long they can work there, and when they must turn back.</p>
-      <div class="sites"></div>
-      <p class="note">Whole-planet view from NASA MOLA elevation (colour = height). Detailed maps, routing and science layers exist
-      only where MarsWalk has verified local data: today, Gale Crater.</p>
-    </aside>`);
-  const sites = left.querySelector<HTMLElement>(".sites")!;
-  for (const s of info.sites) {
-    const card = el(`<div class="site-card${s.region ? "" : " muted"}"><b>${s.name}</b><small>${s.region ? "Verified local data" : "No local MarsWalk data yet"}</small></div>`);
-    if (s.region) {
-      const btn = el<HTMLButtonElement>(`<button class="primary">Open EVA site</button>`);
-      btn.addEventListener("click", () => go(REGIONS.find((r) => r.id === "boxwork")!));
-      card.append(btn);
-    }
-    sites.append(card);
+async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[], conditions: Conditions, launch?: Preset, opts?: { auto3D?: boolean; autoStart?: boolean; cover?: HTMLElement }) {
+  try {
+    teardown?.();
+  } catch (e) {
+    console.error("teardown failed", e); // never let a broken cleanup trap the user on the old screen
   }
-  app.append(left);
-}
-
-async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[], conditions: Conditions) {
-  teardown?.();
   teardown = null;
+  // Leave no mode from the previous screen behind: a leftover mode-3d class hides the map.
+  app.className = "";
   app.innerHTML = `<div class="loading">Loading terrain...</div>`;
   const go = (r: Region) => void showRegion(app, r, waypoints, conditions);
-  if (region.kind === "overview") return showOverview(app, region, go);
+  if (region.kind === "start") {
+    teardown = showStart(app, {
+      waypoints,
+      conditions,
+      mountTopbar: () => topbar(app, region, go, false),
+      // Commence: open the EVA tab with the mission loaded (base, destination, scenario).
+      onCommence: (preset, role, view) => {
+        // 3D: keep the amber light-flood of the opening door up while the scene is built under it.
+        let cover: HTMLElement | undefined;
+        if (view === "3d") {
+          cover = document.createElement("div");
+          cover.className = "boot-cover";
+          cover.innerHTML = "<span>ENTERING THE SURFACE&hellip;</span>";
+          document.body.append(cover);
+        }
+        void showRegion(app, REGIONS.find((r) => r.id === "boxwork")!, waypoints, conditions, { ...preset, role }, { auto3D: view === "3d", autoStart: true, cover });
+      },
+    });
+    return;
+  }
   const terrain = await loadTerrain(region.base);
   const { meta } = terrain;
   app.textContent = "";
@@ -195,8 +193,9 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
           <label class="check"><input id="rand" type="checkbox" checked> Random calamities</label>
         </div>
         <div class="sim-setup"><label>Unplanned find <select id="find"><option value="place" selected>I place it on the map</option><option value="random">Random</option><option value="off">None</option></select></label></div>
-        <button id="sim" class="primary wide">Start live EVA &#9654;</button>
-        <p class="note">You play mission control: calamities strike during the walk and you decide, live, whether the astronaut continues or turns back.</p>
+        <button id="sim3d" class="primary wide">Start live EVA in 3D &#9654;</button>
+        <button id="sim" class="ghost wide">2D map version</button>
+        <p class="note">You play mission control: calamities strike during the walk and you decide, live, whether the astronaut continues or turns back. The 3D walk has synthesised simulation sound and Mission Control voice.</p>
       </div>
       <div id="conditions"></div>
     </aside>`);
@@ -215,9 +214,19 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
   const emptyVerdict = verdictEl.innerHTML;
   const actions = right.querySelector<HTMLElement>(".actions")!;
   const sciEl = right.querySelector<HTMLInputElement>("#sci")!;
+  sciEl.addEventListener("input", () => (presetScienceMin = null));
   let strategy: StrategyName = strategyNames[0];
   let lens: Lens = eva ? "return" : "slope";
   let last: RouteResult | null = null;
+  let autoStart = !!opts?.autoStart; // from the mission start screen: go straight into the 3D walk once the route is ready
+  const fadeCover = () => {
+    const c = opts?.cover;
+    if (!c) return;
+    c.classList.add("gone");
+    window.setTimeout(() => c.remove(), 1300);
+  };
+  if (opts?.cover) window.setTimeout(() => ((autoStart = false), fadeCover()), 45000); // safety: never leave the cover up
+  let presetScienceMin: number | null = null; // from the mission scenario; replaces the verdict's suggestion until the user edits the field
 
   const rates = Object.values(conditions.sols).map((s) => s.rad.dose_rate_b_silicon_ugy_per_day);
   const doseRate = rates.reduce((a, b) => a + b, 0) / rates.length;
@@ -249,10 +258,15 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
           if (eva) {
             sciEl.value = String(Math.max(0, Math.min(15, Math.floor(r.verdict.scienceMin * 0.6))));
             renderVerdict(verdictEl, r.steps, r.verdict, doseRate, cellSizeLabel(meta));
+            if (presetScienceMin !== null) sciEl.value = String(presetScienceMin); // kept until the user edits the field
           } else {
             renderTraverse(verdictEl, r.steps, cellSizeLabel(meta));
           }
           drawProfile(profile, r.steps, eva ? r.verdict.pointOfNoReturn : null);
+          if (autoStart && eva) {
+            autoStart = false;
+            window.setTimeout(() => void runSim(Math.floor(Math.random() * 1e6), !!opts?.auto3D).finally(fadeCover), 0);
+          }
         } else {
           verdictEl.innerHTML = emptyVerdict;
         }
@@ -294,15 +308,24 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
     left.hidden = false;
     right.hidden = false;
     bottom.hidden = !last;
-    app.classList.remove("sim-mode");
+    app.classList.remove("sim-mode", "mode-3d");
     routing.lock(false);
     routing.setReturnVisible(eva && lens === "return");
     setStep(bar, last ? 2 : 1);
   };
-  const runSim = (seed: number) => {
+  // Who the player is (from the start screen); the EVA tab's own buttons put you in Mission Control.
+  const role: Role = launch?.role ?? "capcom";
+  // Measured context for the field notes: Curiosity REMS / RAD on the first waypoint sol.
+  const solKey = Object.keys(conditions.sols).sort()[0];
+  const solC = solKey ? conditions.sols[solKey] : null;
+  const facts = solC
+    ? { sol: solKey, tempMinC: solC.rems.ambient_temp_min_c, tempMaxC: solC.rems.ambient_temp_max_c, pressurePa: solC.rems.pressure_mean_pa, radUgyDay: solC.rad.dose_rate_b_silicon_ugy_per_day }
+    : undefined;
+  const runSim = async (seed: number, use3d = false) => {
     const cur = routing.current();
     if (!cur) return;
     stopSim?.();
+    stopSim = null;
     app.classList.add("sim-mode");
     left.hidden = true;
     right.hidden = true;
@@ -313,9 +336,29 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
     setStep(bar, 3);
     // The brief from Earth: if the destination is a known science stop, say why it matters.
     const [glon, glat] = routing.lonLat(cur.goal);
-    const wp = waypoints.find((w) => Math.hypot(w.lon - glon, w.lat - glat) < 0.0007);
+    // Nearest one: the two ridge waypoints are only about 22 m apart.
+    const wp = waypoints.map((w) => ({ w, d: Math.hypot(w.lon - glon, w.lat - glat) })).filter((x) => x.d < 0.0007).sort((a, b) => a.d - b.d)[0]?.w;
+    // 3D: the same simulation drawn by a Three.js scene, with sound. Falls back to the map if WebGL is unavailable.
+    let stage: Stage | null = null;
+    let audio: SuitAudio | null = null;
+    if (use3d) {
+      try {
+        const { createStage3D } = await import("./three/stage3d");
+        audio = createSuitAudio();
+        const st = createStage3D({ container: app, terrain, base: cur.base, goal: cur.goal, objectiveName: wp?.name ?? "Destination", imageUrl: `${region.base}ctx.png`, audio, initialMode: role === "astronaut" ? "fp" : "orbit" });
+        await st.ready;
+        app.classList.add("mode-3d");
+        stage = st;
+      } catch (e) {
+        audio?.dispose();
+        audio = null;
+        statusEl.textContent = `3D is not available here (${String(e).slice(0, 90)}). Using the 2D map.`;
+      }
+    }
+    stage ??= createMapStage(map, terrain, routing.lonLat, cur.base);
+    const is3d = stage.kind === "3d";
     stopSim = startSim({
-      map, terrain, ...cur,
+      stage, audio: audio ?? undefined, terrain, ...cur,
       reserveL: Number(reserveEl.value),
       scienceS: Math.max(0, Number(sciEl.value) || 0) * 60,
       randomCount: right.querySelector<HTMLInputElement>("#rand")!.checked ? 2 : 0,
@@ -324,16 +367,18 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
         ? { name: wp.name, quote: wp.identificationQuote, sourceUrl: wp.identificationSource }
         : { name: "the selected destination" },
       seed,
-      lonLat: routing.lonLat,
+      role,
+      facts,
       panel: mc,
       hud,
       fx,
       app,
       onExit: exitSim,
-      onRestart: (next) => runSim(next),
+      onRestart: (next) => void runSim(next, is3d),
     });
   };
-  right.querySelector<HTMLButtonElement>("#sim")!.addEventListener("click", () => runSim(Math.floor(Math.random() * 1e6)));
+  right.querySelector<HTMLButtonElement>("#sim")!.addEventListener("click", () => void runSim(Math.floor(Math.random() * 1e6)));
+  right.querySelector<HTMLButtonElement>("#sim3d")!.addEventListener("click", () => void runSim(Math.floor(Math.random() * 1e6), true));
 
   const note = left.querySelector<HTMLElement>("#layer-note")!;
   left.querySelectorAll<HTMLButtonElement>("#base button").forEach((b) =>
@@ -398,12 +443,29 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
       routing.goTo(target.lat, target.lon);
     }
   });
+
+  // Mission start screen -> here: apply the chosen scenario, set the mission's
+  // base and destination, and land on the verdict, ready to rehearse.
+  if (launch && eva) {
+    const apply = () => {
+      reserveEl.value = String(launch.reserveL);
+      reserveEl.dispatchEvent(new Event("input"));
+      right.querySelector<HTMLInputElement>("#rand")!.checked = launch.calamities;
+      right.querySelector<HTMLSelectElement>("#find")!.value = launch.findMode;
+      const target = waypoints.find((w) => w.id === MISSION.targetId) ?? waypoints[0];
+      presetScienceMin = launch.scienceMin;
+      if (routing.setBaseAt(target.lat + MISSION.baseOffset[0], target.lon + MISSION.baseOffset[1])) routing.goTo(target.lat, target.lon);
+      else presetScienceMin = null;
+    };
+    // After routing has wired its layers: its first act is reset(), which would wipe a base set earlier.
+    routing.whenReady(apply);
+  }
 }
 
 async function start() {
   const app = document.querySelector<HTMLDivElement>("#app")!;
   const [waypoints, conditions] = await Promise.all([loadWaypoints(), loadConditions()]);
-  await showRegion(app, REGIONS.find((r) => r.id === "boxwork")!, waypoints, conditions);
+  await showRegion(app, REGIONS[0], waypoints, conditions);
 }
 
 start().catch((err) => {
