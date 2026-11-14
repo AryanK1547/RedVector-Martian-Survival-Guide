@@ -25,3 +25,87 @@ Assumed / Unverified: .claude/settings.json deny rules are loaded (human to conf
 Open Issues: organiser questions (section 2) unanswered; NoData value; cos(latitude) spacing; coordinate checks; crop bounds. Process note: earlier in this session an AI attempt to run git commit (with a Co-Authored-By line) was made and rejected by the human; nothing was committed.
 Commit Point: yes, suggested message: "P0: add project docs, ignore rules and Claude settings"
 Next: human commits and pushes; then P1 Data on the human's go.
+
+## [2026-11-14T15:15:00+05:30] P1 steps 1-2: raster read check and NoData analysis
+
+Phase: P1 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: re-create the raster read inside the window and decide whether 0 is NoData
+AI Generated: tools/prepare_data.py (load_raster, summarize), tools/requirements.txt, tools/check_nodata.py.
+Human Did: placed megt90n000fb.img in data-raw/, ran prepare_data.py and reported its output; reviews the NoData decision.
+Concepts Taught: np.fromfile + reshape with dtype >i2; pathlib repo-root paths; telling NoData from real values by spatial pattern (isolated vs blob pixels).
+Decisions: pending human confirmation: treat 0 as valid elevation, not NoData (see Verified).
+Verified: raster read check by human run: shape (5760, 11520), count 66355200, min -8206, max 21181. check_nodata.py output: 8431 zeros = 0.0127 % of grid; 7012 isolated, 1419 have a zero neighbour; zeros appear in 3125 of 5760 rows and 4919 of 11520 columns; no all-zero row or column.
+Assumed / Unverified: that exact-0 pixels are real elevation (pattern suggests so; NASA documentation not yet checked); the header "data ignore value = 0" meaning; pixel size; pixel-center convention; longitude wrap.
+Open Issues: confirm NoData decision; need the .hdr map-projection lines for step 3; organiser questions still unanswered.
+Commit Point: no
+Next: step 3, coordinate conversion with round-trip test.
+
+## [2026-11-14T15:45:00+05:30] P1 step 3: coordinate conversion and first validate.py checks
+
+Phase: P1 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: lat/lon <-> row/col conversion that round-trips within one pixel
+AI Generated: tools/coords.py (latlon_to_pixel, pixel_to_latlon), tools/validate.py (pixel size, round trip, edges/wrap checks).
+Human Did: pasted the ENVI header lines, ran the read check earlier; will review, commit and push.
+Concepts Taught: equirectangular grid = scale + offset in degrees; pixel corner vs center; longitude wrap with modulo; seeded random tests.
+Decisions: lon 0..360 east, lat 90..-90, pixel value at pixel center, from the header's tie point read as a pixel corner; header pixel size cross-checked against 3396 km * pi/180 / 32.
+Verified: header pixel size 1852.2306687 m equals sphere geometry (computed in validate.py); validate.py 3/3 PASS: round trip worst error 0.015625 deg (half a pixel), edges and wrap OK.
+Assumed / Unverified: ENVI tie point is a pixel corner (not center); longitude is east-positive; NoData decision (0 = valid elevation) still awaiting human confirmation.
+Open Issues: confirm the two assumptions above against ENVI/PDS docs; organiser questions; crop bounds (step 4).
+Commit Point: yes, suggested message: "P1: raster read, NoData check, coordinate conversion with validate checks"
+Next: step 4, Gale crop (needs a sourced coordinate from the human).
+
+## [2026-11-14T16:00:00+05:30] CHANGE: organisers removed the hourly push rule
+
+Phase: P1 | Tool: Claude Code | Model: claude-haiku-5-5
+Goal: record the organisers' rule change in the contract (AGENTS section 0 rule and section 2 table)
+AI Generated: edited AGENTS.md section 2 (Hourly pushes row renamed Commits; open question 2 marked resolved), section 7 (freeze line and cut-order note).
+Human Did: reported the rule change from the organisers; decides when to commit.
+Concepts Taught: none.
+Decisions: commit after each major section, not hourly. Wording change only; no other rule touched.
+Verified: human report of the organisers' change (not checked against the handbook text here).
+Assumed / Unverified: the exact wording of the organisers' new rule; whether hourly-push requirements still apply in some other form.
+Open Issues: organiser question 1 (re-creating earlier code) still open unless answered.
+Commit Point: no
+Next: step 4, Gale crop, once a sourced coordinate is given.
+
+## [2026-11-14T16:20:00+05:30] P1: assumptions checked against the PDS4 label
+
+Phase: P1 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: verify NoData, corner convention and longitude convention against official NASA documentation
+AI Generated: edits to tools/coords.py docstring and AGENTS.md section 6.2 (verified vs still-assumed lists).
+Human Did: pointed to the PDS MEGDR page; reviews the findings.
+Concepts Taught: reading a PDS4 label; using grid-edge arithmetic to infer the corner convention.
+Decisions: 0 is valid elevation, not NoData, so no masking. The earlier "Pending human confirmation" decision is now settled on the evidence below.
+Verified: PDS4 label megt90n000fb.xml (fetched, summarized by a small model; human to skim the raw label): no missing/special constant is defined; "Where no observations lie within the area, an interpolated value is supplied"; longitude_direction Positive East, bounds 0..360; central meridian 180; 32 pixel/deg; 1.8522306687 km/pixel; upper-left corner x=-10668848.652 m, y=5334424.326 m, which equals -pi*R and +pi*R/2 for R=3396 km (grid edge, consistent with the corner convention; I also checked 11520 * 1852.2306687 m = 2*pi*R); topography = radius minus GMM3 areoid, min -8206, max 21181 (matches our read check). The MEGDR HTML page itself states 0-360 east, 90N to 90S.
+Assumed / Unverified: a pixel value belongs to the pixel center (label silent); the corner convention is inferred from arithmetic, not stated. Gale coordinates: not on this page, still needed from an official source.
+Open Issues: Gale Crater center coordinates and source for step 4; organiser question 1.
+Commit Point: no
+Next: step 4, Gale crop.
+
+## [2026-11-14T16:45:00+05:30] P1 step 4: Gale crop (provisional coordinates)
+
+Phase: P1 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: crop one ~470 km region around Gale Crater and check it against the raster
+AI Generated: crop_window, crop_gale, crop_bounds_degrees, describe_crop and Gale constants in tools/prepare_data.py; check_crop in tools/validate.py.
+Human Did: supplied Gale's center and bounding box (pasted text citing the USGS Gazetteer) and the planetarynames link; confirms them against the source.
+Concepts Taught: pixel-aligned crop window; north-south vs east-west extent (cos latitude); slicing a NumPy array and .copy().
+Decisions: crop 256x256 pixels (8 degrees, about 474 km x 472 km) centered on the pixel containing lat -5.37, lon 137.81; whole-pixel alignment so bounds are exact multiples of 1/32 degree.
+Verified: validate.py 4/4 PASS: crop window row0=2923, col0=4281, inside the raster; lat -9.3438..-1.3438, lon 133.7812..141.7812 covers the supplied Gale bounding box; crop min/max -4593 / 2373 m; 28 zeros inside the crop (kept as valid elevation).
+Assumed / Unverified: Gale center (-5.37, 137.81), diameter 154.08 km and bounding box (-6.67..-4.07, 136.51..139.12) come from the human's pasted text. The AI tried to fetch the Gazetteer entry and could not reach a Gale row (page truncated), so these values are NOT verified by the AI. Latitude type (planetocentric vs planetographic) not confirmed; MOLA grid is planetocentric. Pixel-center convention still assumed.
+Open Issues: human confirms Gale values and lat type on the USGS Gazetteer Gale page; organiser question 1.
+Commit Point: no (next major section, slope, is the commit point)
+Next: step 5, masked slope with cos(latitude) spacing.
+
+## [2026-11-14T17:15:00+05:30] P1 step 5: masked slope with cos(latitude) spacing
+
+Phase: P1 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: slope in degrees for the Gale crop, with correct east-west spacing and no NoData spikes
+AI Generated: compute_slope and describe_slope in tools/prepare_data.py; check_slope_synthetic, check_slope_nan_borders, check_slope_real_crop in tools/validate.py.
+Human Did: said "go ahead"; reviews and commits.
+Concepts Taught: slope as rise over run; np.gradient (central differences, one-sided at edges); arctan and hypot; east-west pixel spacing shrinks with cos(latitude); NaN propagation.
+Decisions: no cells masked, because the PDS label defines no NoData value; the NaN handling stays so a masked cell would stay masked. Bug found by my own test and fixed: np.gradient never reads a cell itself, so a NaN cell had received a finite slope; now NaN cells keep NaN slope.
+Verified: validate.py 7/7 PASS. Synthetic: flat grid gives 0; a 100 m/pixel ramp gives 3.090 deg at the equator and 6.154 deg at 60 N (matches atan(100 / (1852.2306687 * cos(lat)))). Real Gale crop: slope min 0.00, max 31.80 deg, mean 3.40, p50/p95/p99 = 1.99 / 11.46 / 17.49, no NaN.
+Assumed / Unverified: Gale coordinates still human-supplied and unverified by the AI; slope at 1.85 km per pixel under-states real steep slopes (resolution limit, to state in README); pixel-center convention.
+Open Issues: confirm Gale values against the USGS Gazetteer; organiser question 1; slope threshold (decided in P2 with a source).
+Commit Point: yes, suggested message: "P1: Gale crop and cos(latitude)-aware slope with validate checks"
+Next: step 6, cost grid and exported assets (elevation.bin, meta.json, hillshade.png, slope.png).

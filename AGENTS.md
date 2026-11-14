@@ -41,7 +41,7 @@ Stack (revised 14 Nov, because GitHub Pages is static-only): Python + NumPy for 
 | Hacking window | 12:00 Sat 14 Nov to 14:00 Sun 15 Nov 2026 (IST). Hard code freeze at 14:00: no commits, merges or edits after. |
 | Fresh code | All source code, models and assets must be created during the window. Public open-source libraries, NASA open datasets and public APIs are allowed. Pre-event code is NOT copied into the repo; re-create it in the repo during the window. |
 | Repository | New PUBLIC GitHub repo created after 12:00 on 14 Nov. Submission link is given on-site before the deadline. |
-| Hourly pushes | At least one push every hour until freeze, including overnight. Each push must be genuine incremental work. |
+| Commits | No fixed hourly push rule (organisers changed it, 14 Nov). Commit and push after each major section is finished. Each commit must be genuine incremental work. |
 | Human authors only | Every commit authored and pushed by a registered human team member from their own GitHub account. No AI or bot authors, no AI co-author tags, no automated commit scripts. |
 | Every member | Every team member appears in Contributors with their own commits. Teams are 1 to 5 members. |
 | Live hosting | Host on GitHub Pages (or comparable). Live URL at the top of `README.md`. |
@@ -52,7 +52,7 @@ Stack (revised 14 Nov, because GitHub Pages is static-only): Python + NumPy for 
 
 Open questions for the organising desk (ask early, record the answer in `log.txt`):
 1. Is re-creating our own earlier learning code inside the window acceptable if we disclose it?
-2. How are hourly pushes expected overnight for small teams?
+2. (Resolved 14 Nov: no hourly push rule; commit after each major section.)
 
 ---
 
@@ -129,10 +129,12 @@ Verified by the human's own run before the event:
 - 11520 samples x 5760 lines, 1 band, header offset 0, 16-bit signed integer, most-significant-byte first (NumPy `>i2`), 32 pixels per degree.
 - 66,355,200 values read as expected; minimum -8206, maximum 21181 (meters).
 
-From the header or NASA documentation, to be re-verified in this window:
-- Pixel size 1852.2306687 m; topography is radius minus areoid.
-- NoData ("data ignore value = 0" in the header): confirm whether 0 can also be real elevation.
-- Pixel-center convention, longitude wrap, projection parameters.
+Verified in this window against the PDS4 label `megt90n000fb.xml` (see log.txt):
+- Pixel size 1852.2306687 m; topography = planetary radius minus areoid (GMM3); planetocentric latitude, sphere 3396 km.
+- Longitude positive east, 0-360, equirectangular, central meridian 180, upper-left corner at the grid edge (-pi*R, +pi*R/2).
+- NoData: the label defines NO missing-value constant. The ENVI header's "data ignore value = 0" is an import artifact. Where no observation exists, an interpolated value is stored. So 0 is valid elevation; do not mask it.
+
+Still assumed: a pixel's value belongs to the pixel center (label does not say).
 
 ### 6.3 Data preparation rules (`tools/`)
 
@@ -164,7 +166,7 @@ From the header or NASA documentation, to be re-verified in this window:
 
 ## 7. Timeline And Phases (all times IST)
 
-Freeze: Sun 15 Nov 14:00. Push every hour.
+Freeze: Sun 15 Nov 14:00. Commit and push after each major section (no hourly rule).
 
 | Phase | When | Build | Done when |
 |---|---|---|---|
@@ -181,7 +183,7 @@ Freeze: Sun 15 Nov 14:00. Push every hour.
 
 Cut order if behind: science layer, extra strategies, 3D polish, 3D entirely, sunlight/comms.
 Never cut: map, route, stats, deployed URL, Level 1 replay, README with AI disclosure.
-If overnight pushes are hard, prefer small genuine steps (tests, docs, one fix per hour) over large risky changes.
+Prefer small, genuine, finished steps (tests, docs, one fix per section) over large risky changes.
 
 ---
 
