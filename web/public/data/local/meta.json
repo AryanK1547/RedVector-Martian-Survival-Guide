@@ -1,0 +1,62 @@
+{
+  "crop": {
+    "center_waypoint": "boxwork_ridge_top",
+    "cols": 400,
+    "dem_col0": 13125,
+    "dem_row0": 38009,
+    "lat_bottom": -4.838330471052591,
+    "lat_top": -4.7708480516201295,
+    "lon_left": 137.34560163018995,
+    "lon_right": 137.41308404962243,
+    "name": "Mount Sharp boxwork area (local)",
+    "row0": 0,
+    "rows": 400
+  },
+  "files": {
+    "elevation.bin": {
+      "dtype": "<f4",
+      "order": "row-major, north row first",
+      "shape": [
+        400,
+        400
+      ],
+      "units": "meters"
+    },
+    "hillshade.png": {
+      "altitude_deg": 45.0,
+      "azimuth_deg": 315.0,
+      "kind": "visualization",
+      "vertical_exaggeration": 1.0
+    },
+    "slope.bin": {
+      "degrees_per_step": 0.5,
+      "dtype": "uint8",
+      "note": "slope in degrees = value * degrees_per_step; computed at 10 m per cell",
+      "shape": [
+        400,
+        400
+      ]
+    },
+    "slope.png": {
+      "grayscale_max_degrees": 45.0,
+      "kind": "visualization"
+    }
+  },
+  "grid": {
+    "col_spacing_method": "pixel_size_m * cos(latitude of the row)",
+    "nodata": null,
+    "pixel_size_m": 10.0,
+    "pixels_per_degree": 5927.469752330622,
+    "row_spacing_m": 10.0,
+    "sampling": "point sample of one 1 m DEM pixel per 10 m cell (pixel 5 of the block), no averaging"
+  },
+  "source": {
+    "dataset": "USGS MSL Gale Merged DEM 1m v3 (Calef and Parker 2016, PDS Annex), from NASA MRO HiRISE stereo",
+    "elevation_meaning": "DEM value as stored in the file, meters; about 55 m below PLACES rover elevations at the waypoints (datum difference suspected, not confirmed)",
+    "file": "https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/MSL/MSL_Gale_DEM_Mosaic_1m_v3.tif",
+    "latitude_type": "planetocentric (sphere R = 3396190 m)",
+    "longitude": "degrees east",
+    "url": "https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m"
+  },
+  "version": 1
+}

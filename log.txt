@@ -277,3 +277,17 @@ Assumed / Unverified: the DEM elevation at both waypoints is about 55 m LOWER th
 Open Issues: elevation datum offset; Analyst Notebook cross-check; add ChatGPT to the README AI disclosure; remaining P3b sources (THEMIS, CTX/CRISM, REMS, RAD, Curiosity images).
 Commit Point: yes, suggested message: "P3b: verified boxwork waypoints from NASA PDS PLACES"
 Next: extract a downsampled DEM window around the waypoints with tools, then remaining source checks.
+
+## [2026-11-15T00:20:00+05:30] Fix lost export code; local 10 m boxwork map from the USGS 1 m DEM
+
+Phase: P3b/P4 | Tool: Claude Code | Model: claude-opus-5-5
+Goal: restore the broken data pipeline and build the local high-resolution map
+AI Generated: tools/prepare_data.py restored (export section: OUT_DIR, hillshade, build_assets, write_assets) plus generalised helpers gradients_for, slope_from_gradients, shade_from_gradients; tools/prepare_local.py; web/public/data/local/{elevation.bin, slope.bin, slope.png, hillshade.png, meta.json}.
+Human Did: committed P3b; approved continuing; must commit the restored prepare_data.py.
+Concepts Taught: range requests per compressed row (strip); point sampling vs averaging; caching downloads; why 10 m slopes are much steeper than 1.85 km slopes.
+Decisions: CORRECTION: the committed tools/prepare_data.py (commits cbe66eb and 20251a9) lacked the P1 step 6 export code that validate.py imports, so validate.py failed from git. Probable cause: an editor saved an older buffer (no stash or checkout in the reflog). Restored from the full version read earlier in this session; validate.py 8/8 PASS and the rebuilt assets are byte-identical to the committed ones. Local window: 4 km x 4 km centred on boxwork_ridge_top, 400 x 400 cells of 10 m, point-sampled (one 1 m pixel per cell), no vertical exaggeration in the hillshade. The window rows are cached in data-raw/local/dem_window.npz.
+Verified: 400 rows downloaded (31.4 MB of 3.87 GB), header size, LZW and one-row strips asserted at run time; window bounds lat -4.7708..-4.8383, lon 137.3456..137.4131; elevation -4092.0..-3285.3 m, 0 NoData cells; slope 0.06..60.64 deg, mean 13.92, p50/p95/p99 11.09/33.49/42.00; exported 1,031,750 bytes. Hillshade inspected by me: buttes, ridges and layered slopes. With the 25 deg limit, 14.0% of cells are blocked (7.9% above 30, 3.8% above 35); both waypoints are passable (7.5 and 11.0 deg) and 85.2% of the window is reachable from the ridge top. DEM at the waypoints is -3629.7 and -3626.5 m vs PLACES -3576.0 and -3571.2 m (same about 55 m offset as before).
+Assumed / Unverified: point sampling can miss features smaller than 10 m (individual boxwork ridges are meter-scale); elevation datum offset unexplained; the product page could not be fetched (403), so license and citation text come from the earlier search summary.
+Open Issues: commit the restore; datum offset; web app support for the local map (float32 elevation, region switch, waypoint markers); remaining source checks.
+Commit Point: yes, two commits suggested: "Fix: restore asset export in prepare_data.py (lost from P1 commit)" and "P4: local 10 m boxwork map from the USGS MSL Gale 1 m DEM"
+Next: web app: region switch (Gale overview / boxwork local), float32 loader, waypoint markers.
