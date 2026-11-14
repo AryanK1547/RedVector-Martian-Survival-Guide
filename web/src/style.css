@@ -12,3 +12,4 @@ html, body, #app { margin: 0; height: 100%; background: #14090a; color: #f0d9c8;
 #panel select { max-width: 100%; }
 .waypoint-marker { width: 14px; height: 14px; border-radius: 50%; background: #ff8c1a; border: 2px solid #fff; box-shadow: 0 0 4px #000; cursor: pointer; }
 .maplibregl-popup-content { color: #222; font-size: 12px; }
+.maplibregl-popup-content img.pov { display: block; width: 100%; margin: 6px 0 2px; border-radius: 3px; }

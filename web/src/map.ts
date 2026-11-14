@@ -84,15 +84,17 @@ const escapeHtml = (t: string) =>
   t.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]!);
 
 // One marker per science waypoint, with its NASA sources in a popup.
-export function addWaypointMarkers(map: maplibregl.Map, waypoints: Waypoint[]): void {
+export function addWaypointMarkers(map: maplibregl.Map, waypoints: Waypoint[], dataBase = "data/"): void {
   for (const w of waypoints) {
     const el = document.createElement("div");
     el.className = "waypoint-marker";
     el.title = w.name;
-    const popup = new maplibregl.Popup({ offset: 12, maxWidth: "280px" }).setHTML(
+    const popup = new maplibregl.Popup({ offset: 12, maxWidth: "320px" }).setHTML(
       `<strong>${escapeHtml(w.name)}</strong><br>
        Curiosity, sol ${w.sol}<br>
        ${w.lat.toFixed(6)}&deg;, ${w.lon.toFixed(6)}&deg;E<br>
+       <img class="pov" src="${escapeHtml(dataBase + w.imageFile)}" alt="${escapeHtml(w.imageCaption)}">
+       <small>${escapeHtml(w.imageCaption)}</small><br>
        <em>"${escapeHtml(w.identificationQuote)}"</em><br>
        <a href="${escapeHtml(w.identificationSource)}" target="_blank" rel="noopener">NASA blog</a> &middot;
        position: NASA PDS MSL PLACES`,

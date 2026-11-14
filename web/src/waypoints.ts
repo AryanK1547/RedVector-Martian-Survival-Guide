@@ -10,6 +10,8 @@ export interface Waypoint {
   positionSource: string;
   identificationSource: string;
   identificationQuote: string;
+  imageFile: string; // relative to data/
+  imageCaption: string;
 }
 
 // Minimal RFC 4180 CSV reader: commas, double-quoted fields, "" as an escaped quote.
@@ -55,6 +57,7 @@ export function parseWaypoints(text: string): Waypoint[] {
   const c = {
     id: col("id"), name: col("name"), sol: col("sol"), lat: col("latitude_planetocentric"), lon: col("longitude_east"),
     elev: col("elevation_m"), pos: col("position_source"), idSrc: col("identification_source"), quote: col("identification_quote"),
+    img: col("image_file"), imgCap: col("image_caption"),
   };
   return rows
     .filter((r) => r.length === header.length)
@@ -68,6 +71,8 @@ export function parseWaypoints(text: string): Waypoint[] {
       positionSource: r[c.pos],
       identificationSource: r[c.idSrc],
       identificationQuote: r[c.quote],
+      imageFile: r[c.img],
+      imageCaption: r[c.imgCap],
     }));
 }
 

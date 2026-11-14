@@ -305,3 +305,17 @@ Assumed / Unverified: not seen in a browser by me.
 Open Issues: human browser check; datum offset; remaining source checks (THEMIS, CTX, REMS, RAD, Curiosity images); README AI disclosure must name ChatGPT.
 Commit Point: yes, suggested message: "P4: boxwork local map, region switch and NASA waypoint markers"
 Next: P3b remaining source checks, starting with THEMIS thermal inertia and a Curiosity image for the waypoints.
+
+## [2026-11-15T01:30:00+05:30] P3b: THEMIS and Curiosity image checks; Navcam POV images at waypoints
+
+Phase: P3b/P4 | Tool: Claude Code | Model: claude-opus-5-5
+Goal: verify the thermal layer source and add point-of-view rover images to the waypoints
+AI Generated: tools/build_waypoints.py (image columns, download with a generic user agent); web/public/data/images/{boxwork_ridge_base,boxwork_ridge_top}.jpg; waypoints.csv (image_file, image_site_drive, image_source, image_caption); web/src/waypoints.ts and map.ts (image in popup); style.css.
+Human Did: approved continuing.
+Concepts Taught: georeferencing (why an image without extent/projection cannot be overlaid); Navcam file names carry the rover site/drive counter.
+Decisions: THEMIS Gale page (themis.asu.edu/landingsites/mslsite_06) is NO-GO for an overlay: it lists Day IR, Night IR, VIS, TI (90-785 J m-2 K-1 s-1/2 legend, 1779x1779 px) but no extent, projection or world file, and its TIFF links convert a PNG. Candidate instead: USGS THEMIS thermal inertia mosaics at 100 m per pixel (tiles; Gale should fall in a 30S 120E tile, NOT confirmed); USGS pages return 403 to automated fetch, so the human must copy the download link. PIA26559 (Mastcam 360, sols 4451-4454) and PIA26560 (sol 4536) verified on jpl.nasa.gov but taken before the waypoints, so they are context only, not waypoint POV. POV images come from the two NASA blog posts: NLB_805688270EDR_F1172166NCAM00354M (Left Navcam, sol 4598) whose file name holds site 117 drive 2166 = boxwork_ridge_base exactly; NLB_805867552EDR_F1172370NCAM00257M (sol 4600, "looking along the ridge") at site 117 drive 2370, about 11 m before boxwork_ridge_top, labelled that way in the caption.
+Verified: both images downloaded from assets.science.nasa.gov (1024x1024 grayscale, 634,721 and 489,847 bytes); I looked at the ridge image (rover deck, sloping ridge, layered terrain). Build passes, vitest 30/30. public/data total 2.4 MB.
+Assumed / Unverified: reading F<site><drive> from the Navcam file name is my inference from the naming pattern, supported by the exact match with PLACES; JPL image use policy not read (credit NASA/JPL-Caltech shown).
+Open Issues: THEMIS TI download link (human, browser); REMS and RAD checks; datum offset; README AI disclosure must name ChatGPT.
+Commit Point: yes, suggested message: "P4: Curiosity Navcam point-of-view images for the boxwork waypoints"
+Next: THEMIS thermal inertia layer once the link is known; REMS/RAD conditions panel.
