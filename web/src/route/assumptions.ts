@@ -21,3 +21,8 @@ export function walkingSpeedKmh(grade: number): number {
   const tobler = (s: number) => 6 * Math.exp(-3.5 * Math.abs(s + 0.05));
   return (FLAT_SPEED_KMH * tobler(grade)) / tobler(0);
 }
+
+// Oxygen used by walking for the given time, at the assumed metabolic rate.
+export function oxygenLitres(timeS: number): number {
+  return (METABOLIC_KCAL_PER_H * timeS) / 3600 / KCAL_PER_LITRE_O2;
+}

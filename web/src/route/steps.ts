@@ -1,4 +1,4 @@
-import { KCAL_PER_LITRE_O2, METABOLIC_KCAL_PER_H, walkingSpeedKmh } from "./assumptions";
+import { METABOLIC_KCAL_PER_H, oxygenLitres, walkingSpeedKmh } from "./assumptions";
 import { groundDistance, type Grid } from "./cost";
 
 // One entry per route cell. The stats panel, elevation profile, Level 1 replay
@@ -54,7 +54,7 @@ export function buildSteps(g: Grid, cells: number[]): RouteStep[] {
       distanceM,
       timeS,
       energyKcal,
-      oxygenL: energyKcal / KCAL_PER_LITRE_O2,
+      oxygenL: oxygenLitres(timeS),
     });
   }
   return steps;

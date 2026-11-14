@@ -1,0 +1,49 @@
+{
+  "note": "Measured by Curiosity at its own position on that sol. Historical context only, not a forecast.",
+  "rad_product": "MSL-M-RAD-3-RDR-V1.0, PDS PPI Node; detector B = silicon, E = plastic scintillator (RAD RDR SIS)",
+  "rems_product": "MSL-M-REMS-5-MODRDR-V1.0, PDS Atmospheres Node",
+  "sols": {
+    "4598": {
+      "rad": {
+        "dose_rate_b_silicon_ugy_per_day": 167.9,
+        "dose_rate_e_plastic_ugy_per_day": 157.5,
+        "method": "mean of per-observation total dose rates (microGray/hour, RAD RDR) x 24",
+        "observations_b": 86,
+        "observations_e": 86,
+        "source": "https://pds-ppi.igpp.ucla.edu/data/MSL-M-RAD-3-RDR-V1.0/DATA/SOL_04489_04612/RAD_RDR_2025_193_23_42_4598_V00.TXT"
+      },
+      "rems": {
+        "ambient_temp_max_c": -17.3,
+        "ambient_temp_min_c": -82.9,
+        "ambient_temp_reliable_samples": 37917,
+        "pressure_mean_pa": 743.0,
+        "pressure_samples": 37917,
+        "rows": 37917,
+        "source": "https://atmos.nmsu.edu/PDS/data/PDS4/msl_rems_bundle/data_calibrated/SOL_04489_04612/SOL04598/RME_805631193RMD45980000000_______P1.TAB",
+        "uv_abc_max_w_m2": 0.53,
+        "uv_abc_unshadowed_samples": 25280
+      }
+    },
+    "4602": {
+      "rad": {
+        "dose_rate_b_silicon_ugy_per_day": 168.6,
+        "dose_rate_e_plastic_ugy_per_day": 159.3,
+        "method": "mean of per-observation total dose rates (microGray/hour, RAD RDR) x 24",
+        "observations_b": 87,
+        "observations_e": 87,
+        "source": "https://pds-ppi.igpp.ucla.edu/data/MSL-M-RAD-3-RDR-V1.0/DATA/SOL_04489_04612/RAD_RDR_2025_198_02_14_4602_V00.TXT"
+      },
+      "rems": {
+        "ambient_temp_max_c": -28.3,
+        "ambient_temp_min_c": -81.2,
+        "ambient_temp_reliable_samples": 37910,
+        "pressure_mean_pa": 733.2,
+        "pressure_samples": 37910,
+        "rows": 37910,
+        "source": "https://atmos.nmsu.edu/PDS/data/PDS4/msl_rems_bundle/data_calibrated/SOL_04489_04612/SOL04602/RME_805986290RMD46020000000_______P1.TAB",
+        "uv_abc_max_w_m2": 9.24,
+        "uv_abc_unshadowed_samples": 25957
+      }
+    }
+  }
+}

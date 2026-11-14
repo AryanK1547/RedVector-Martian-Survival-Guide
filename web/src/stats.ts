@@ -1,3 +1,4 @@
+import { walkDoseUgy } from "./conditions";
 import { MAX_SLOPE_DEG } from "./route/cost";
 import type { RouteStep, RouteSummary } from "./route/steps";
 
@@ -8,7 +9,7 @@ function hoursMinutes(s: number): string {
   return `${Math.floor(total / 60)} h ${String(total % 60).padStart(2, "0")} min`;
 }
 
-export function renderStats(el: HTMLElement, s: RouteSummary, cellSize: string): void {
+export function renderStats(el: HTMLElement, s: RouteSummary, cellSize: string, doseRatePerDay: number): void {
   el.innerHTML = `
     <table>
       <tr><td>Distance</td><td>${dist(s.distanceM)}</td></tr>
@@ -17,9 +18,11 @@ export function renderStats(el: HTMLElement, s: RouteSummary, cellSize: string):
       <tr><td>Walking time*</td><td>${hoursMinutes(s.timeS)}</td></tr>
       <tr><td>Energy*</td><td>${Math.round(s.energyKcal)} kcal</td></tr>
       <tr><td>Oxygen used*</td><td>${Math.round(s.oxygenL)} L</td></tr>
+      <tr><td>Radiation&dagger;</td><td>${walkDoseUgy(doseRatePerDay, s.timeS).toFixed(1)} &micro;Gy</td></tr>
     </table>
     <p class="note">* Model assumptions, not NASA mission values: 2.5 km/h on flat ground slowed on grades (Tobler),
-    234 kcal/h (Apollo EVA average), 4.8 kcal per litre O<sub>2</sub>. Slopes are averaged over ${cellSize} cells.</p>`;
+    234 kcal/h (Apollo EVA average), 4.8 kcal per litre O<sub>2</sub>. Slopes are averaged over ${cellSize} cells.<br>
+    &dagger; Walking time x ${doseRatePerDay.toFixed(0)} &micro;Gy/day, the dose rate Curiosity's RAD measured in its silicon detector here (July 2025). Not a body dose; suit shielding ignored.</p>`;
 }
 
 // Elevation (y) against distance along the route (x), drawn on a canvas.

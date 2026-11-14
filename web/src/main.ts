@@ -1,4 +1,5 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
+import { loadConditions, renderConditions, type Conditions } from "./conditions";
 import { cellSizeLabel, loadTerrain } from "./data";
 import { addWaypointMarkers, createMap, showLayer, type Layer } from "./map";
 import { RouteClient } from "./route/client";
@@ -32,7 +33,7 @@ const REGIONS: Region[] = [
 
 let teardown: (() => void) | null = null;
 
-async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[]) {
+async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[], conditions: Conditions) {
   teardown?.();
   app.textContent = "Loading terrain...";
   const terrain = await loadTerrain(region.base);
@@ -59,22 +60,29 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
     <label>Region <select id="region">${regionOptions}</select></label>
     <label>Layer <select id="layer"><option value="hillshade">Hillshade</option><option value="slope">Slope</option></select></label>
     <label>Strategy <select id="strategy">${strategyOptions}</select></label>
+    <label>Oxygen reserve (L) <input id="reserve" type="number" min="1" step="1" value="30"></label>
+    <p class="note">Reserve is a model assumption (demo value), not a NASA suit figure.</p>
     <button id="reset">Reset</button>
     <p id="status"></p>
+    <p id="safety"></p>
     <div id="stats"></div>
     <canvas id="profile" width="236" height="90" hidden></canvas>
+    <div id="conditions"></div>
     <p class="note">Cell size ${cellSizeLabel(meta)}.${exaggeration !== 1 ? ` Hillshade uses ${exaggeration}x vertical exaggeration (visualization only).` : ""}
     Orange markers: Curiosity science waypoints (click for NASA sources).</p>`;
   app.append(panel);
 
   panel.querySelector<HTMLSelectElement>("#region")!.addEventListener("change", (e) => {
     const next = REGIONS.find((r) => r.id === (e.target as HTMLSelectElement).value)!;
-    void showRegion(app, next, waypoints);
+    void showRegion(app, next, waypoints, conditions);
   });
   panel.querySelector<HTMLSelectElement>("#layer")!.addEventListener("change", (e) => {
     showLayer(map, (e.target as HTMLSelectElement).value as Layer);
   });
 
+  renderConditions(panel.querySelector<HTMLElement>("#conditions")!, conditions);
+  const rates = Object.values(conditions.sols).map((s) => s.rad.dose_rate_b_silicon_ugy_per_day);
+  const doseRate = rates.reduce((a, b) => a + b, 0) / rates.length;
   const statsEl = panel.querySelector<HTMLElement>("#stats")!;
   const profile = panel.querySelector<HTMLCanvasElement>("#profile")!;
   setupRouting(
@@ -83,13 +91,15 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
     client,
     {
       status: panel.querySelector<HTMLElement>("#status")!,
+      safety: panel.querySelector<HTMLElement>("#safety")!,
+      reserve: panel.querySelector<HTMLInputElement>("#reserve")!,
       strategy: panel.querySelector<HTMLSelectElement>("#strategy")!,
       reset: panel.querySelector<HTMLButtonElement>("#reset")!,
     },
     (steps) => {
       profile.hidden = !steps;
       drawProfile(profile, steps);
-      if (steps) renderStats(statsEl, summarize(steps), cellSizeLabel(meta));
+      if (steps) renderStats(statsEl, summarize(steps), cellSizeLabel(meta), doseRate);
       else statsEl.innerHTML = "";
     },
   );
@@ -97,8 +107,8 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
 
 async function start() {
   const app = document.querySelector<HTMLDivElement>("#app")!;
-  const waypoints = await loadWaypoints();
-  await showRegion(app, REGIONS[0], waypoints);
+  const [waypoints, conditions] = await Promise.all([loadWaypoints(), loadConditions()]);
+  await showRegion(app, REGIONS[0], waypoints, conditions);
 }
 
 start().catch((err) => {

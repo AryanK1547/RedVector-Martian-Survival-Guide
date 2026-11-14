@@ -319,3 +319,31 @@ Assumed / Unverified: reading F<site><drive> from the Navcam file name is my inf
 Open Issues: THEMIS TI download link (human, browser); REMS and RAD checks; datum offset; README AI disclosure must name ChatGPT.
 Commit Point: yes, suggested message: "P4: Curiosity Navcam point-of-view images for the boxwork waypoints"
 Next: THEMIS thermal inertia layer once the link is known; REMS/RAD conditions panel.
+
+## [2026-11-15T02:30:00+05:30] P3b/P5: REMS and RAD conditions for the waypoint sols
+
+Phase: P3b/P5 | Tool: Claude Code | Model: claude-opus-5-5
+Goal: real measured weather and radiation for the boxwork waypoints, shown as historical context
+AI Generated: tools/prepare_conditions.py; web/public/data/conditions.json; web/src/conditions.ts and conditions.test.ts; stats row "Radiation during walk"; conditions box in the panel; tools/requirements.txt (+ certifi).
+Human Did: approved continuing.
+Concepts Taught: PDS3 labels giving byte offsets so values can be fetched with range requests; confidence flag strings; detector dose vs body dose; TLS certificate chains.
+Decisions: REMS MODRDR (label: "best estimation of the real data") instead of ENVRDR. Air temperature only where the reliability byte (byte 8) is 1; pressure where not -999. RAD: mean of per-observation total dose rates x 24, detector B (silicon) as the headline, E (plastic scintillator) kept in JSON; detector meanings from the RAD RDR SIS. UV kept out of the UI: unshadowed peak 0.53 W/m2 on sol 4598 vs 9.24 on sol 4602, unexplained. Walk dose = measured silicon dose rate x walking time, labelled as an estimate (not body dose, suit shielding ignored). TLS: Python rejected pds-ppi.igpp.ucla.edu as "certificate has expired"; the server certificate is valid (Lets Encrypt, 13 Oct 2026 to 11 Jan 2027) and the local Windows Python store chained it to an expired root, so the tool verifies against the certifi CA bundle; verification is NOT disabled.
+Verified: REMS files https://atmos.nmsu.edu/PDS/data/PDS4/msl_rems_bundle/data_calibrated/SOL_04489_04612/SOL04598/RME_805631193RMD45980000000_______P1.TAB and SOL04602/RME_805986290RMD46020000000_______P1.TAB; RAD files https://pds-ppi.igpp.ucla.edu/data/MSL-M-RAD-3-RDR-V1.0/DATA/SOL_04489_04612/RAD_RDR_2025_193_23_42_4598_V00 and RAD_RDR_2025_198_02_14_4602_V00 (.LBL/.TXT). Sol 4598: air -82.9..-17.3 C (37917 reliable rows), 743.0 Pa, RAD B 167.9 uGy/day (86 obs), E 157.5. Sol 4602: -81.2..-28.3 C (37910), 733.2 Pa, B 168.6 uGy/day (87 obs), E 159.3. Build passes, vitest 32/32.
+Assumed / Unverified: every temperature row passed the reliability flag (surprising, not investigated); RAD values not compared with a published daily summary; conditions panel not seen in a browser by me.
+Open Issues: UV discrepancy; THEMIS TI link (human); datum offset; README AI disclosure must name ChatGPT.
+Commit Point: yes, suggested message: "P5: measured REMS weather and RAD radiation for the boxwork waypoints"
+Next: point-of-no-return map, then Level 1 replay with HUD.
+
+## [2026-11-15T03:20:00+05:30] P5: point-of-no-return map and turn-back check
+
+Phase: P5 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: show where the astronaut can still get back to base, and where along a route to turn around
+AI Generated: web/src/route/noreturn.ts (moveTimeS, returnTimes, checkRoute), web/src/route/noreturn.test.ts, web/src/returnmap.ts (ReturnOverlay), web/src/ui.ts rewritten around it, oxygenLitres in assumptions.ts (steps.ts now uses it), controls in main.ts, styles, a real-terrain test in local.test.ts.
+Human Did: chose the 30 L demo oxygen reserve (editable, labelled a model assumption); must check the overlay and the purple marker in the browser.
+Concepts Taught: why the return search runs backwards (uphill is slower, so cost depends on direction); reverse Dijkstra; point of no return = first cell where oxygen used + oxygen to return exceeds the reserve; checking a fast algorithm against a brute-force relaxation.
+Decisions: the first click is the base (start); the return map is computed in the main thread (about 270 ms for 160,000 cells in Node; a worker would be cleaner, left as is). Return trips use time-minimising paths, not the strategy cost. Colours: green under half the reserve, amber up to the reserve, red above it, clear = no way back. Reserve 30 L is a DEMO value chosen by the lead, not a NASA suit capacity. Walk dose and oxygen use the same model assumptions as before.
+Verified: tsc clean, build passes, vitest 37/37 PASS. returnTimes equals a brute-force relaxation on 15 seeded random grids (including unreachable cells); never exceeds the time of an A*-walked route back; returning uphill takes longer than the same walk downhill; checkRoute finds the first cell exceeding the reserve and the cell before it is within it. On the real boxwork map from the ridge top with 30 L: green 6%, amber 11%, red 74%, no way back 9% of cells; computed in 271 ms.
+Assumed / Unverified: not seen in a browser by me (overlay colours, purple marker, panel text); oxygen reserve is not a real suit figure; the 4 km map is small compared with a real EVA, so 30 L is deliberately tight.
+Open Issues: browser check; THEMIS TI link (human); datum offset; README AI disclosure must name ChatGPT; docs/qa.md needs P3b-P5 items.
+Commit Point: yes, suggested message: "P5: point-of-no-return map and turn-back check"
+Next: Level 1 replay with HUD (animated astronaut along the route, oxygen countdown, turn-back alert), then docs.

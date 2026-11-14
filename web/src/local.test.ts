@@ -2,7 +2,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { latlonToCell, parseTerrain, type Meta } from "./data";
 import { astar } from "./route/astar";
+import { oxygenLitres } from "./route/assumptions";
 import { MAX_SLOPE_DEG, STRATEGIES, gridFromTerrain } from "./route/cost";
+import { returnTimes } from "./route/noreturn";
 import { parseCsv, parseWaypoints } from "./waypoints";
 
 const dir = new URL("../public/data/", import.meta.url);
@@ -49,5 +51,27 @@ describe("local boxwork map", () => {
     expect(r).not.toBeNull();
     expect(r.cost).toBeGreaterThan(15);
     expect(r.cost).toBeLessThan(35);
+  });
+});
+
+describe("return map on the real local terrain", () => {
+  it("is fast and the 30 L demo reserve splits the map into zones", () => {
+    const g = gridFromTerrain(terrain);
+    const top = latlonToCell(meta, waypoints[1].lat, waypoints[1].lon)!;
+    const t0 = performance.now();
+    const times = returnTimes(g, top.row * g.cols + top.col);
+    const ms = performance.now() - t0;
+    let green = 0, amber = 0, red = 0, none = 0;
+    for (const s of times) {
+      if (!Number.isFinite(s)) none++;
+      else if (oxygenLitres(s) <= 15) green++;
+      else if (oxygenLitres(s) <= 30) amber++;
+      else red++;
+    }
+    const n = times.length;
+    console.log(`return map ${n} cells in ${ms.toFixed(0)} ms: green ${(100 * green / n).toFixed(0)}%, amber ${(100 * amber / n).toFixed(0)}%, red ${(100 * red / n).toFixed(0)}%, no way back ${(100 * none / n).toFixed(0)}%`);
+    expect(ms).toBeLessThan(1500);
+    expect(green).toBeGreaterThan(0);
+    expect(red).toBeGreaterThan(0);
   });
 });

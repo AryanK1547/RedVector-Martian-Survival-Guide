@@ -69,7 +69,7 @@ export function createMap(container: HTMLElement, meta: Meta, base: string, attr
 // the route layers is added second would otherwise end up on top, so both
 // setup paths call this to put the route line and markers last.
 export function raiseOverlays(map: maplibregl.Map): void {
-  for (const id of ["route-line", "points"]) {
+  for (const id of ["return", "route-line", "points"]) {
     if (map.getLayer(id)) map.moveLayer(id);
   }
 }
