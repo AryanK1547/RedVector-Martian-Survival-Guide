@@ -249,3 +249,31 @@ Assumed / Unverified: action major versions (checkout@v4, setup-node@v4, configu
 Open Issues: first deploy; README team section; P3b source checks.
 Commit Point: yes, suggested message: "P3: GitHub Pages deploy workflow and README skeleton"
 Next: P3b source checks for the new data layers.
+
+## [2026-11-14T22:45:00+05:30] P3b source check 1: local high-resolution DEM for the boxwork area
+
+Phase: P3b | Tool: Claude Code | Model: claude-opus-5-5 (plus a ChatGPT research answer pasted by the human)
+Goal: find a NASA high-resolution DEM that covers the Mount Sharp boxwork region
+AI Generated: scratchpad script (not in repo) that reads a remote GeoTIFF header with HTTP range requests; this log entry.
+Human Did: pasted a ChatGPT answer listing candidate NASA sources (HiRISE DTMs, THEMIS Gale page, CRISM, Curiosity images, REMS, RAD). ChatGPT must be named in the README AI disclosure.
+Concepts Taught: HTTP range requests; reading GeoTIFF tags (size, pixel scale, tie point, projection) without downloading the file.
+Decisions: the two HiRISE DTMs named by ChatGPT are real (checked on uahirise.org: DTEED_018643_1745_019065_1745_A01, -5.49, 138.4, 2.02 m/px, 350 MB, "Candidate MSL Landing Site"; DTEEC_023957_1755_024023_1755_U01, -4.56, 137.4, 1.01 m/px, 458 MB, "MSL Landing Site"), but neither is described as covering the boxwork area. Better candidate: USGS "MSL Gale Merged DEM 1m" v3 (Calef and Parker 2016, PDS Annex).
+Verified (from the file header itself): https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/MSL/MSL_Gale_DEM_Mosaic_1m_v3.tif (redirect from planetarymaps.usgs.gov), 3,868,256,546 bytes, range requests supported; 32980 x 57440 px, float32, LZW, one row per strip; 1.0 m pixels; equirectangular, center longitude 0, Mars 2000 sphere R = 3,396,190 m; tie point x = 8127993.99 m, y = -244781.58 m, which gives lon 137.125..137.682 E and lat -4.130..-5.099; NoData -32767; elevation -4625.9..-322.6 m (GDAL statistics in the file).
+Assumed / Unverified: that the 2025 boxwork area lies inside this extent (no official coordinates found yet; NASA blog places it in the Mount Sharp foothills, sols about 4500-4600). USGS product page returned 403 to automated fetch.
+Open Issues: boxwork coordinates (candidate sources: PDS PLACES archive, MSL Analyst Notebook, NASA Where is Curiosity map); reading a window needs LZW decoding of selected rows.
+Commit Point: no
+Next: get boxwork coordinates, then extract a downsampled window from the merged DEM.
+
+## [2026-11-14T23:40:00+05:30] P3b: verified boxwork waypoints from PDS PLACES; DEM decode check
+
+Phase: P3b | Tool: Claude Code | Model: claude-opus-5-5 (task text drafted by the human with ChatGPT)
+Goal: verified rover coordinates for boxwork science destinations as a reusable CSV; confirm the 1 m DEM decodes
+AI Generated: tools/build_waypoints.py; web/public/data/waypoints.csv; tools/requirements.txt (+ imagecodecs); scratchpad scripts (not in repo) for the remote DEM header and row decoding.
+Human Did: specified PLACES localized_interp_demv2.csv as the source, the sol range 4550-4610, the verification rules and a reusable CSV; approved pip install imagecodecs.
+Concepts Taught: PDS4 product + XML label; rover motion counter (site/drive) as the PLACES key; cross-checking a position against an independent NASA text.
+Decisions: only waypoints whose identity a NASA source states are included. Ghost Mountain is NOT included: in the posts found it is only a butte seen from a distance (sols 4525-4526 Mastcam mosaic); no source gives a rover position on it. Meson ridge (15 m drive planned in sols 4602-4603) not included: the next PLACES positions move only about 5 m, so the drive could not be matched.
+Verified: PLACES file found via pds.nasa.gov release msl_places-20260317 inventory, downloaded from https://planetarydata.jpl.nasa.gov/img/data/msl/msl_places/data_localizations/localized_interp_demv2.csv (11,721,740 bytes, label version 42.0, 49,315 records, 26 fields, max sol 4868). Sols 4550-4610: 750 rover rows, 21 end-of-sol positions, all inside the 1 m DEM extent, about 600 m of travel near -4.80, 137.38. Waypoint boxwork_ridge_base = site 117 drive 2166, sol 4598, -4.804257486, 137.379494767, -3576.019 m (blog sols 4600-4601, 16 Jul 2025: parked at the base of a ridge leading to the most prominent boxwork network). Waypoint boxwork_ridge_top = site 117 drive 2490, sol 4602, -4.804603677, 137.379357484, -3571.169 m (blog sols 4602-4603, 18 Jul 2025: climbed the 11 m ramp, top of the ridge, start of the main boxwork region). Base to top: 22.1 m ground distance (blog: 21 m drive planned). imagecodecs 2026.3.6 decodes the DEM LZW rows (79 kB compressed -> 32,980 float32 values per row, plausible ranges).
+Assumed / Unverified: the DEM elevation at both waypoints is about 55 m LOWER than PLACES (-55.0 and -55.8 m; relative climb 4.05 m in the DEM vs 4.85 m in PLACES). A near-constant offset suggests different vertical datums, but the cause is not confirmed; check the PLACES SIS and the DEM documentation before mixing the two elevations. MSL Analyst Notebook cross-check not done by me (human, in a browser).
+Open Issues: elevation datum offset; Analyst Notebook cross-check; add ChatGPT to the README AI disclosure; remaining P3b sources (THEMIS, CTX/CRISM, REMS, RAD, Curiosity images).
+Commit Point: yes, suggested message: "P3b: verified boxwork waypoints from NASA PDS PLACES"
+Next: extract a downsampled DEM window around the waypoints with tools, then remaining source checks.
