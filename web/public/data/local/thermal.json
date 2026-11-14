@@ -1,0 +1,9 @@
+{
+  "coverage_percent": 100.0,
+  "dataset": "Mars Odyssey THEMIS qualitative thermal inertia, Gale Crater (ASU)",
+  "kind": "visualization",
+  "resolution_m": 100.0,
+  "sampling": "nearest THEMIS pixel at each cell centre",
+  "scale_note": "qualitative 8-bit; ASU legend 90 (blue, low) to 785 (red, high) J m-2 K-1 s-1/2; not used in route costs",
+  "url": "https://static.mars.asu.edu/themis/landingsites/msl42/qualTI/Gale_crater_THEMIS_qualTI.tif"
+}

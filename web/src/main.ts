@@ -58,7 +58,8 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
   panel.id = "panel";
   panel.innerHTML = `<strong>MarsWalk</strong>
     <label>Region <select id="region">${regionOptions}</select></label>
-    <label>Layer <select id="layer"><option value="hillshade">Hillshade</option><option value="slope">Slope</option></select></label>
+    <label>Layer <select id="layer"><option value="hillshade">Hillshade</option><option value="slope">Slope</option><option value="thermal">Thermal inertia (THEMIS)</option></select></label>
+    <p class="note" id="layer-note"></p>
     <label>Strategy <select id="strategy">${strategyOptions}</select></label>
     <label>Oxygen reserve (L) <input id="reserve" type="number" min="1" step="1" value="30"></label>
     <p class="note">Reserve is a model assumption (demo value), not a NASA suit figure.</p>
@@ -77,7 +78,12 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
     void showRegion(app, next, waypoints, conditions);
   });
   panel.querySelector<HTMLSelectElement>("#layer")!.addEventListener("change", (e) => {
-    showLayer(map, (e.target as HTMLSelectElement).value as Layer);
+    const layer = (e.target as HTMLSelectElement).value as Layer;
+    showLayer(map, layer);
+    panel.querySelector<HTMLElement>("#layer-note")!.textContent =
+      layer === "thermal"
+        ? "NASA Mars Odyssey THEMIS, qualitative thermal inertia at 100 m (ASU). Blue = low, generally loose dust or sand; red = high, generally rock or bedrock. Visual context only; not used in routing. Covers the boxwork map fully, only central Gale on the overview."
+        : "";
   });
 
   renderConditions(panel.querySelector<HTMLElement>("#conditions")!, conditions);

@@ -347,3 +347,17 @@ Assumed / Unverified: not seen in a browser by me (overlay colours, purple marke
 Open Issues: browser check; THEMIS TI link (human); datum offset; README AI disclosure must name ChatGPT; docs/qa.md needs P3b-P5 items.
 Commit Point: yes, suggested message: "P5: point-of-no-return map and turn-back check"
 Next: Level 1 replay with HUD (animated astronaut along the route, oxygen countdown, turn-back alert), then docs.
+
+## [2026-11-15T04:10:00+05:30] P4: THEMIS thermal inertia layer (Mars Odyssey)
+
+Phase: P4 | Tool: Claude Code | Model: claude-opus-5-5 (link and proposal text from the human via ChatGPT)
+Goal: add the thermal data layer from a georeferenced NASA Mars Odyssey product
+AI Generated: tools/prepare_themis.py; web/public/data/thermal.png + thermal.json and web/public/data/local/thermal.png + thermal.json; Thermal option and note in web/src/main.ts; LAYERS list in web/src/map.ts.
+Human Did: supplied the ASU THEMIS directory https://static.mars.asu.edu/themis/landingsites/msl42/ and a ChatGPT proposal to make MarsWalk Mars-wide.
+Concepts Taught: world file (.wld) and projection (aux.xml WKT); resampling one raster onto another grid with nearest neighbour; qualitative vs calibrated data.
+Decisions: qualitative thermal inertia (qualTI) only: the quantTI folder is empty. Visual layer only, not used in routing. Metadata written to thermal.json, not meta.json, because validate.py compares meta.json byte-for-byte. CORRECTION during this block: a failed text edit let an older script version rewrite both meta.json files; I restored them with git checkout, which re-wrote them with CRLF line endings (core.autocrlf=true) and failed the asset check; converted back to LF, validate.py 8/8 PASS; git shows them as modified but git diff is empty (line endings only).
+Verified: Gale_crater_THEMIS_qualTI.tif (3,170,896 bytes) 1779x1779 uint8, values 1..255; world file 100.0000014901 m pixels, upper-left pixel centre x=-2612850.04, y=-177250.00; WKT Mars2000 Equidistant Cylindrical, central meridian 180, sphere R=3396190 m. Extent 135.9188..138.9201 E, -5.9908..-2.9895. Covers 100% of the boxwork map (about 40x40 THEMIS pixels) and 14.1% of the Gale overview. I looked at the local thermal.png. Build passes, vitest 38/38, validate.py 8/8.
+Assumed / Unverified: colour ramp is my visual choice (ASU legend gives 90..785 J m-2 K-1 s-1/2 for its own colouring); "low = dust/sand, high = rock" is the general interpretation of thermal inertia, worded as "generally" in the UI; not seen in the browser by me.
+Open Issues: decision on the Mars-wide proposal; Mars Trek CTX layer needs a verified WMTS URL; datum offset; README AI disclosure must name ChatGPT.
+Commit Point: yes, suggested message: "P4: THEMIS thermal inertia layer from Mars Odyssey"
+Next: per the lead decision on scope.

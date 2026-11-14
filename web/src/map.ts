@@ -10,7 +10,8 @@ import type { Waypoint } from "./waypoints";
 // and hand us its address.
 maplibregl.setWorkerUrl(workerUrl);
 
-export type Layer = "hillshade" | "slope";
+export type Layer = "hillshade" | "slope" | "thermal";
+const LAYERS: Layer[] = ["hillshade", "slope", "thermal"];
 
 // The image corners in [lon, lat] order: top-left, top-right, bottom-right,
 // bottom-left. MapLibre stretches the PNG over this quadrilateral.
@@ -50,7 +51,7 @@ export function createMap(container: HTMLElement, meta: Meta, base: string, attr
     "bottom-right",
   );
   map.on("load", () => {
-    for (const name of ["hillshade", "slope"] as Layer[]) {
+    for (const name of LAYERS) {
       map.addSource(name, { type: "image", url: `${base}${name}.png`, coordinates: imageCorners(meta) });
       map.addLayer({
         id: name,
@@ -75,7 +76,7 @@ export function raiseOverlays(map: maplibregl.Map): void {
 }
 
 export function showLayer(map: maplibregl.Map, layer: Layer): void {
-  for (const name of ["hillshade", "slope"] as Layer[]) {
+  for (const name of LAYERS) {
     map.setLayoutProperty(name, "visibility", name === layer ? "visible" : "none");
   }
 }
