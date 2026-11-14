@@ -1,6 +1,13 @@
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import type { Meta } from "./data";
+
+// MapLibre parses GeoJSON in its own worker file. It normally finds that file
+// with new URL(..., import.meta.url), which bundlers cannot see, so the file
+// would be missing from the build. Importing it with ?url makes Vite copy it
+// and hand us its address.
+maplibregl.setWorkerUrl(workerUrl);
 
 export type Layer = "hillshade" | "slope";
 
@@ -50,8 +57,18 @@ export function createMap(container: HTMLElement, meta: Meta): maplibregl.Map {
         paint: { "raster-resampling": "nearest" },
       });
     }
+    raiseOverlays(map);
   });
   return map;
+}
+
+// Layers draw in the order they were added. Whichever of the raster layers and
+// the route layers is added second would otherwise end up on top, so both
+// setup paths call this to put the route line and markers last.
+export function raiseOverlays(map: maplibregl.Map): void {
+  for (const id of ["route-line", "points"]) {
+    if (map.getLayer(id)) map.moveLayer(id);
+  }
 }
 
 export function showLayer(map: maplibregl.Map, layer: Layer): void {

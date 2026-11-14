@@ -24,11 +24,14 @@ The lead is Aryan Khode, 3rd-year B.Tech. He is here to LEARN while shipping, an
 
 MarsWalk helps an astronaut plan a Marswalk: pick a start, a destination and a strategy on a real Mars terrain map, get a route with statistics, and watch it replayed as a mission.
 
-Scope (decided 9 Nov, still valid):
-- Level 1: 2D mission replay on the map with a HUD (slope, elevation, oxygen, suit power, sol clock, alerts).
-- Level 2: 3D terrain walk-through (Three.js) built from the same elevation grid and route.
-- Level 1 is the safety net. A first-person physics game is out of scope.
-- One cropped region (about 400-600 km wide, around Gale Crater), not the whole planet.
+Scope (revised 14 Nov, 21:30, after re-reading the challenge brief; replaces the 9 Nov scope):
+- Two scales: the MOLA regional map (Gale, about 470 km) as overview, plus a high-resolution local DEM of the Mount Sharp boxwork area (MRO HiRISE or CTX DTM, coverage and source to be verified). The brief asks for hyperlocal maps, not regional ones.
+- Layered data from 3+ NASA missions and 3+ data kinds: topography (MGS MOLA, MRO DTM), thermal (Mars Odyssey THEMIS, rock/dust hazard), optical or spectral (MRO CTX or CRISM), conditions (Curiosity RAD dose and REMS weather for a stated sol). Each layer only after its source is verified.
+- Science waypoints (boxwork, Curiosity sites) with a Curiosity point-of-view image and a short science note.
+- Safety: route with stats (done), point-of-no-return map, replanning on an injected hazard.
+- Level 1: 2D mission replay with a HUD (slope, elevation, oxygen, sol clock, alerts). Level 1 is the safety net.
+- Level 2 3D: cut, or only a small preview if time remains. The brief does not ask for 3D.
+- A first-person physics game is out of scope.
 
 Stack (revised 14 Nov, because GitHub Pages is static-only): Python + NumPy for offline data preparation; a fully static web app (Vite + TypeScript, MapLibre GL JS, Three.js) that runs A* in the browser inside a Web Worker. No FastAPI server. Reason: nothing to host, deploy or keep alive in 24 hours.
 
@@ -174,15 +177,16 @@ Freeze: Sun 15 Nov 14:00. Commit and push after each major section (no hourly ru
 | P1 Data | Sat 14:45-17:00 | `tools/prepare_data.py`: read raster, verify NoData, crop Gale region, masked slope, cost, export assets, `validate.py` | `validate.py` all PASS; assets in `web/public/data` |
 | P2 Route + map | Sat 17:00-20:00 | Vite app, MapLibre image overlay, click start/end, A* worker, route line, stats panel, elevation profile | A route plans on screen between two clicks |
 | P3 Deploy early | Sat 20:00-21:00 | Pages workflow, live URL, README skeleton with URL at top | Live URL works in a clean browser |
-| P4 Level 1 replay | Sat 21:00-00:30 | Animated astronaut, follow camera, HUD, alerts | Replay plays on the live site |
-| P5 Level 2 3D | Sun 00:30-05:00 | Heightmap mesh, shading, astronaut, follow camera, route ribbon. GO/NO-GO at 05:00. | Astronaut walks the real route in 3D, or we cut it |
-| P6 Stabilize | Sun 05:00-09:00 | Bugs, device checks, strategy comparison, tests, `docs/qa.md` | No known crash on the live site |
-| P7 Polish + docs | Sun 09:00-12:00 | README (six sections), AI disclosure from `log.txt`, screenshots, science layer if time, demo script | README complete |
+| P3b Source checks | Sat 22:30-23:30 | Verify coverage, URL, format and terms for: local DTM of the boxwork area, THEMIS thermal inertia, CTX/CRISM, RAD/REMS, Curiosity images. Log each. | Each layer marked GO or NO-GO with its source |
+| P4 Layers + local map | Sat 23:30-04:00 | Local DTM through the existing pipeline, thermal and optical/spectral layers, layer panel, science waypoints | 3+ data kinds visible and toggleable on the live site |
+| P5 Safety + replay | Sun 04:00-08:00 | Point-of-no-return map, Level 1 replay with HUD, injected-hazard replanning, conditions panel | Replay plays on the live site with a turn-back alert |
+| P6 Stabilize | Sun 08:00-10:00 | Bugs, device checks, strategy comparison, tests, `docs/qa.md` | No known crash on the live site |
+| P7 Polish + docs | Sun 10:00-12:00 | README (six sections), AI disclosure from `log.txt`, screenshots, demo script, 3D preview only if time | README complete |
 | P8 Freeze prep | Sun 12:00-13:45 | FEATURE FREEZE 12:00. Demo video, final deploy check, final push by 13:45. Submit the link from organisers. | Submitted |
 | Hard freeze | Sun 14:00 | No edits at all. Judging 14:00-17:00. | |
 
-Cut order if behind: science layer, extra strategies, 3D polish, 3D entirely, sunlight/comms.
-Never cut: map, route, stats, deployed URL, Level 1 replay, README with AI disclosure.
+Cut order if behind: 3D preview, radio line-of-sight, injected-hazard replanning, spectral layer, local DTM (fall back to MOLA only), conditions panel.
+Never cut: map, route, stats, deployed URL, 3+ data layers, science waypoints, point-of-no-return, Level 1 replay, README with AI disclosure.
 Prefer small, genuine, finished steps (tests, docs, one fix per section) over large risky changes.
 
 ---
@@ -225,7 +229,9 @@ At a limit: read the reset time in the message, switch to a smaller model, and u
 - Pre-event learning (not repo code): read the real MOLA file, coordinate math, slope v1 with an unresolved NoData problem.
 - Repo: created; kit files in place (AGENTS.md, CLAUDE.md, .claude/settings.json, .gitignore, log.txt). First human push pending.
 - P0 pushed. P1 Data done in code: tools/ (coords, prepare_data, validate 8/8 PASS), assets in web/public/data (about 290 KB). Awaiting human commit.
-- Next: P2 Route + map (slope threshold needs a written, sourced justification).
+- P2 Route + map done in code: Vite app, MapLibre hillshade/slope overlay, A* in a Web Worker (checked against Dijkstra), click start/end, 3 strategies, stats panel, elevation profile. Slope limit 25 deg and walking/energy/oxygen model assumptions logged with sources. vitest 26/26.
+- Scope revised 14 Nov 21:30 (section 1, section 7): layered multi-mission data, local high-resolution map of the boxwork area, science waypoints, point-of-no-return; 3D cut to an optional preview.
+- Next: P3 Deploy early, then P3b source checks.
 
 Open issues: NoData value and masking; cos(latitude) spacing; coordinate convention checks; crop bounds; organiser answers (§2); submission link (given on-site).
 

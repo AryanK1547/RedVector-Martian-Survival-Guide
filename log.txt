@@ -165,3 +165,87 @@ Assumed / Unverified: the map has NOT been viewed in a browser by me (no browser
 Open Issues: human visual check of the map; Gale values and organiser question 1 still open.
 Commit Point: yes, suggested message: "P2: Vite app, terrain loader and MapLibre hillshade/slope overlay"
 Next: step 4, routing core (heap, cost, A*, Dijkstra) with tests; needs a sourced slope threshold.
+
+## [2026-11-14T19:30:00+05:30] P2 step 4: routing core (heap, cost, A*, Dijkstra) with tests
+
+Phase: P2 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: pure TypeScript route planner on the elevation/slope grid, proven against a reference Dijkstra
+AI Generated: web/src/route/{heap,cost,astar,dijkstra}.ts and web/src/route/route.test.ts.
+Human Did: approved the 25 deg slope limit (chosen from options I found by web search); reviews and commits.
+Concepts Taught: binary heap / priority queue; A* = Dijkstra + admissible heuristic; why the heuristic must never over-estimate; deterministic tie-breaking; why the reference Dijkstra shares no heap code.
+Decisions: MAX_SLOPE_DEG = 25. Source: JPL "2020 mobility trending" (robotics.jpl.nasa.gov/media/documents/2020-mobility-trending.pdf) lists Curiosity max rover pitch 25.22 deg in its first 7 years. This came from a web-search summary; I did NOT read the PDF. It is a ROVER figure, not an astronaut EVA limit. Strategy weights (shortest 0/0, balanced 2/1, safest 10/4 for slope/elevation) are tuning choices, not NASA values. Cost = ground distance * (1 + w_slope * (slope/25)^2) + w_elev * |dz|. East-west distance uses cos(latitude) per row. Diagonals may not squeeze between two blocked cells.
+Verified: vitest 17/17 PASS, tsc clean. A* total cost equals reference Dijkstra on seeded random grids (all 3 strategies), on a 40x40 window of the real crop, and recomputed path cost equals reported cost. Real crop corner to corner (cell 10,10 to 245,245): shortest 240 cells max slope 22.0 deg, balanced 244 cells max 17.5, safest 309 cells max 5.5; each plans in 15-50 ms in Node. Only 35 of 65,536 cells exceed 25 deg, so the hard limit rarely blocks anything on this crop; strategies differ mainly through the slope/elevation penalties.
+Assumed / Unverified: the 25.22 deg figure needs the human to check the JPL PDF. Strategy weights untuned for the UI. Timings measured in Node, not in a browser worker.
+Open Issues: confirm slope source; Gale values; organiser question 1.
+Commit Point: no (next commit point after step 5)
+Next: step 5, Web Worker plus click interaction.
+
+## [2026-11-14T20:10:00+05:30] P2 step 5: Web Worker and click-to-route interaction
+
+Phase: P2 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: two clicks on the map plan and draw a route, with A* running in a Web Worker
+AI Generated: web/src/route/{engine,worker,client,engine.test}.ts, web/src/ui.ts, rewrite of web/src/main.ts, status style in web/src/style.css.
+Human Did: said "go"; must click two points in the browser to confirm; reviews and commits.
+Concepts Taught: Web Worker (separate thread, messages copied by postMessage); request ids so replies match requests; keeping worker logic in engine.ts so tests can run it without a browser; GeoJSON source/line/circle layers.
+Decisions: click 1 start, click 2 destination, click 3 starts over; Reset button; changing strategy re-plans; outdated results are ignored via a token. Clicking a cell above 25 deg or outside the crop shows a message and sets nothing. Only the selected strategy is drawn.
+Verified: tsc + vite build pass (worker bundled as its own 2.65 kB file); vitest 20/20 PASS including engine tests (same route as calling astar directly, blocked goal returns null cells with the same id, plan before init throws); dev server serves worker.ts with 200.
+Assumed / Unverified: the real worker, markers, route line and strategy re-plan have NOT been seen in a browser by me; the human must check them.
+Open Issues: human browser check of step 5; confirm JPL slope source; Gale values; organiser question 1.
+Commit Point: yes, suggested message: "P2: A* routing core, Web Worker and click-to-route on the map"
+Next: step 6, RouteStep list, stats panel and elevation profile (needs approval of model-assumption values).
+
+## [2026-11-14T20:40:00+05:30] P2 step 5 fix: route layers hidden, MapLibre worker not loading
+
+Phase: P2 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: make the route line and markers appear after two clicks
+AI Generated: raiseOverlays in web/src/map.ts (route layers always on top); setWorkerUrl with a ?url import of maplibre-gl-worker.mjs in web/src/map.ts.
+Human Did: tested step 5 in the browser, found no route drawn, pasted the console error "Worker failed to load" which located the cause.
+Concepts Taught: MapLibre parses GeoJSON in its own worker file; bundlers cannot see new URL(..., import.meta.url) built at runtime; Vite ?url import; layer draw order.
+Decisions: ?url import instead of optimizeDeps.exclude, because it also puts the worker file into the production build (checked: dist/assets has maplibre-gl-worker-*.mjs, 519 kB); an exclude only fixes dev. The first fix I tried (layer order) was a guess and was not the root cause; it stays because order does depend on load timing.
+Verified: build passes and emits the MapLibre worker asset; dev server serves the worker file with 200; vitest 20/20 PASS earlier. Several stray dev servers I had started were stopped; one remains on port 5173.
+Assumed / Unverified: NOT seen in a browser by me; the human must confirm the route line and markers now appear.
+Open Issues: human check; JPL slope source; Gale values; organiser question 1.
+Commit Point: yes (this fix belongs with step 5), suggested message: "P2: A* routing core, Web Worker and click-to-route on the map"
+Next: step 6 after the human confirms routes draw.
+
+## [2026-11-14T21:15:00+05:30] P2 step 6-7: route steps, stats panel, elevation profile, wrap-up
+
+Phase: P2 | Tool: Claude Code | Model: claude-opus-5-5 (lead switched models)
+Goal: show distance, ascent, slope, time, energy and oxygen for a planned route, plus an elevation profile
+AI Generated: web/src/route/assumptions.ts, web/src/route/steps.ts, web/src/route/steps.test.ts, web/src/stats.ts; groundDistance factored out in web/src/route/cost.ts; ui.ts/main.ts/style.css wiring; docs/qa.md P2 section; AGENTS.md section 10.
+Human Did: chose the model assumptions (slower 2.5 km/h base over the 3.5 km/h maximum); confirmed the route draws in the browser after the worker fix; asked for ideas to raise the project level; reviews and commits.
+Concepts Taught: one RouteStep list feeding every view; cumulative values; Tobler hiking function; energy = metabolic rate x time; oxygen from the energy equivalent of O2; canvas drawing.
+Decisions: FLAT_SPEED_KMH 2.5 (NASA ICES 2026 Mars suit mass presentation gives Apollo nominal max walking speed about 2.2 mph); Tobler shape scaled so flat = 2.5 km/h, using the signed grade of each move; METABOLIC_KCAL_PER_H 234 (Apollo lunar EVA overall average, NASA report, ntrs.nasa.gov); KCAL_PER_LITRE_O2 4.8 (textbook physiology). All shown in the UI as model assumptions, not NASA mission values.
+Verified: vitest 26/26 PASS (flat speed exact, slower uphill, step distances sum to route length, energy and oxygen follow the stated rates, ascent minus descent = net height change); npm run build passes.
+Assumed / Unverified: sources are from web-search summaries, full documents NOT read; Tobler is an Earth model; constant metabolic rate ignores the extra effort of climbing; stats panel not yet seen in a browser by me.
+Open Issues: human browser check of the stats panel; confirm JPL, NASA ICES and Apollo metabolic sources; Gale values; organiser question 1; scope decision on the proposed additions.
+Commit Point: yes, P2 done; suggested message: "P2: route stats, elevation profile and model assumptions"
+Next: P3 Deploy early (Pages workflow, live URL, README skeleton).
+
+## [2026-11-14T21:30:00+05:30] Scope revision after re-reading the challenge brief
+
+Phase: P2/P3 boundary | Tool: Claude Code | Model: claude-opus-5-5
+Goal: align the scope with the official challenge text
+AI Generated: gap analysis (brief vs build) in chat; AGENTS.md section 1 scope, section 7 phases P3b/P4/P5 and times, cut order, section 10 state.
+Human Did: pasted the challenge brief, asked what is done and missing, approved the proposal ("yeah go ahead").
+Concepts Taught: none (planning).
+Decisions: the brief asks for multiple NASA missions, 3+ data kinds, hyperlocal scale, science objectives, current conditions and point-of-view imagery; our build had one mission, one data kind, a regional scale and no science targets. New scope: two-scale map (MOLA regional plus a local high-resolution DTM of the Mount Sharp boxwork area), thermal plus optical or spectral layers, RAD/REMS conditions, science waypoints with Curiosity images, point-of-no-return and replanning. Level 2 3D cut to an optional preview (the brief does not ask for 3D). New phase P3b checks every data source before use.
+Verified: none (no data source checked yet).
+Assumed / Unverified: that a HiRISE or CTX DTM covers the boxwork area, and that THEMIS, CTX/CRISM, RAD/REMS and Curiosity images can be fetched in usable formats with clear terms; all to be checked in P3b.
+Open Issues: P3b source checks; earlier open issues unchanged.
+Commit Point: yes, together with P2, or alone: "Docs: revise scope to multi-mission layered map after re-reading the brief"
+Next: P3 Deploy early (Pages workflow, live URL, README skeleton).
+
+## [2026-11-14T22:00:00+05:30] P3: GitHub Pages workflow, relative base, README skeleton
+
+Phase: P3 | Tool: Claude Code | Model: claude-opus-5-5
+Goal: deployable static build and a README with the live URL at the top
+AI Generated: .github/workflows/pages.yml (checkout, setup-node 22, npm ci, npm test, npm run build, configure-pages, upload-pages-artifact, deploy-pages); web/vite.config.ts (base "./"); README.md skeleton with the six required sections and TODOs for the team.
+Human Did: approved P3; must enable Pages (Settings > Pages > Source: GitHub Actions), commit, push and open the live URL in a clean browser.
+Concepts Taught: GitHub Actions jobs and steps; Pages artifact deploy (no commits, no gh-pages branch); relative base path for a sub-path site.
+Decisions: base "./" so the site works under /RedVector-Martian-Survival-Guide/ without hard-coding the repo name; tests run in CI before the build, so a failing test blocks the deploy. Live URL in README follows the standard Pages pattern from the git remote (AryanK1547/RedVector-Martian-Survival-Guide) and is marked TODO until it loads.
+Verified: npm run build passes; dist/index.html uses ./assets paths; a copy of dist served under /RedVector-Martian-Survival-Guide/ returns 200 for index, all data files, the app bundle, our route worker and the MapLibre worker.
+Assumed / Unverified: action major versions (checkout@v4, setup-node@v4, configure-pages@v5, upload-pages-artifact@v3, deploy-pages@v4) not checked against the current marketplace; the workflow has not run on GitHub yet; team names and the AI disclosure are TODO for the team.
+Open Issues: first deploy; README team section; P3b source checks.
+Commit Point: yes, suggested message: "P3: GitHub Pages deploy workflow and README skeleton"
+Next: P3b source checks for the new data layers.
