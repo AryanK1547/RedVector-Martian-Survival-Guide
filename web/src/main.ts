@@ -12,7 +12,9 @@ import { startSim } from "./sim/view";
 import { MISSION, showStart, type Preset, type Role } from "./start";
 import { setupRouting, strategyNames, type RouteResult } from "./ui";
 import { loadWaypoints, type Waypoint } from "./waypoints";
+import { setupOrientationGate } from "./orient";
 import "./style.css";
+import "./mobile.css"; // after style.css: phone overrides
 
 interface Region {
   id: string;
@@ -464,6 +466,7 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
 
 async function start() {
   const app = document.querySelector<HTMLDivElement>("#app")!;
+  setupOrientationGate();
   const [waypoints, conditions] = await Promise.all([loadWaypoints(), loadConditions()]);
   await showRegion(app, REGIONS[0], waypoints, conditions);
 }

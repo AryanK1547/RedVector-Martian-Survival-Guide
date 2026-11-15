@@ -27,6 +27,15 @@ const PAINT: Record<Layer, Record<string, unknown>> = {
 
 // The image corners in [lon, lat] order: top-left, top-right, bottom-right,
 // bottom-left. MapLibre stretches the PNG over this quadrilateral.
+// A landscape phone is about 390 px tall: the cards and the map credits must share it.
+const PHONE_LANDSCAPE = () => window.matchMedia("(orientation: landscape) and (max-height: 520px)").matches;
+
+// MapLibre opens its compact credits box on load; on a phone it would cover the map. The (i) button still opens it.
+function collapseCredits(map: maplibregl.Map) {
+  if (!PHONE_LANDSCAPE()) return;
+  map.once("load", () => map.getContainer().querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show"));
+}
+
 export function imageCorners(meta: Meta): [[number, number], [number, number], [number, number], [number, number]] {
   const c = meta.crop;
   return [
@@ -52,7 +61,7 @@ export function createMap(container: HTMLElement, meta: Meta, base: string, attr
     },
     bounds: [c.lon_left, c.lat_bottom, c.lon_right, c.lat_top],
     // Keep the map between the left plan card and the right verdict card.
-    fitBoundsOptions: { padding: { top: 70, bottom: 20, left: 330, right: 360 } },
+    fitBoundsOptions: { padding: PHONE_LANDSCAPE() ? { top: 48, bottom: 20, left: 256, right: 286 } : { top: 70, bottom: 20, left: 330, right: 360 } },
     maxBounds: [c.lon_left - padLon, c.lat_bottom - padLat, c.lon_right + padLon, c.lat_top + padLat],
     attributionControl: false,
   });
@@ -60,6 +69,7 @@ export function createMap(container: HTMLElement, meta: Meta, base: string, attr
   // No ScaleControl: MapLibre measures on an Earth-sized globe, so on Mars
   // coordinates its scale bar would be wrong by a factor of about 1.9.
   map.addControl(new maplibregl.AttributionControl({ customAttribution: attribution, compact: true }), "bottom-right");
+  collapseCredits(map);
   map.on("load", () => {
     for (const name of LAYERS) {
       map.addSource(name, { type: "image", url: `${base}${name}.png`, coordinates: imageCorners(meta) });
@@ -152,6 +162,7 @@ export function createOverviewMap(
   });
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
   map.addControl(new maplibregl.AttributionControl({ customAttribution: attribution, compact: true }), "bottom-right");
+  collapseCredits(map);
   map.on("load", () => {
     map.addSource("mars", {
       type: "image",

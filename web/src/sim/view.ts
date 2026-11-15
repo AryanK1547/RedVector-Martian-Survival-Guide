@@ -500,11 +500,13 @@ export function startSim(s: SimSetup): () => void {
       },
     });
     s.app.append(learn.el);
-    s.app.classList.add("learn-open");
+    // On a phone the panel would leave a sliver of map: start it closed; "Learn" reopens it.
+    const compactScreen = window.matchMedia("(max-height: 520px), (max-width: 940px)").matches;
+    if (!compactScreen) s.app.classList.add("learn-open");
     showLearnBtn = document.createElement("button");
     showLearnBtn.className = "ln-show";
     showLearnBtn.innerHTML = "&#9654; Learn";
-    showLearnBtn.hidden = true;
+    showLearnBtn.hidden = !compactScreen;
     s.app.append(showLearnBtn);
     learn.el.querySelector<HTMLButtonElement>("#ln-hide")!.addEventListener("click", () => {
       s.app.classList.remove("learn-open");

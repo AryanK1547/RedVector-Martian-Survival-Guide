@@ -15,7 +15,9 @@ Tools like JPL Mars Trek show regional and global views. MarsWalk targets a sing
 
 ## 2. Team
 
-TODO (team): names, roles and GitHub accounts of every member.
+**RedVector** — a solo build by **Aryan Khode** (3rd-year B.Tech, full stack: problem definition, data sourcing and validation, scope decisions, feature triage, testing, presentation). 
+
+GitHub: [@AryanK1547](https://github.com/AryanK1547)
 
 ## 3. Solution and architecture
 
@@ -34,7 +36,7 @@ TODO (team): names, roles and GitHub accounts of every member.
 - **Point-of-no-return map:** every cell is shaded by the oxygen needed to walk back to base, against an editable reserve. Along a route, a purple marker shows where to turn back.
 - **Mission start screen (first tab), in 3D:** you stand inside an airlock (a procedural Three.js room: scenery) behind a helmet visor. **Power up suit** starts the sound and the Earth uplink. The mission package that "uploads" is the real set of data files (local 10 m terrain, regional MOLA terrain, 2 rover waypoints, Curiosity conditions, imagery), fetched for real with sizes shown; the timing is paced for effect. The brief shows the objective, the NASA blog quote for the destination, and a round-trip preview computed on the real terrain (393 m out, 32.7 L of a 45 L reserve for the standard scenario); the uplink ends with the measured outside conditions (Curiosity REMS and RAD, sol 4598: 743 Pa, -82.9 to -17.3 C, 167.9 microGy/day). Pick a **scenario** (Training walk, Standard EVA, Crisis drill; demo values) and a **role** (EVA astronaut or Mission Control). **Commence EVA mission** first asks how you want to fly: the **simulated view** (3D, below) or the **educational view** (the 2D map with the same decisions, tasks and notes, no airlock show). The simulated view depressurises the airlock on screen from 101.3 kPa (assumed habitat pressure, Earth sea level) down to the measured 743 Pa, with a note on what that means (under 1% of Earth's pressure, below the 6.3 kPa Armstrong limit), opens the door and walks you out into the 3D walk. Through the door you see the real terrain (local DEM, CTX photo), turned to the most open view from the base, computed from the DEM skyline; the platform, ramp and dust tint on the greyscale CTX photo are illustrative. Suit battery is shown as "not modelled".
 - **Live EVA simulation, in 3D (with a 2D map version):** the astronaut walks the route in compressed real time with a suit display: mission clock, oxygen left, oxygen needed to get home, margin, walk-home time, active conditions. The 3D walk (Three.js) uses one mesh vertex per 10 m DEM cell at true vertical scale, draped with the CTX photo; first-person (helmet visor), chase and overview cameras; route, trail and option lines drawn on the ground; the find can be placed by clicking the 3D ground. Rocks, surface grain, sun and sky are visual detail, labelled as such. The 2D map version runs the same engine.
-  - **Two roles, one engine:** as the **EVA astronaut** you start in first person, calamities come without warning and CAPCOM (the habitat) advises while you make the call; as **Mission Control** you start in the overview, can inject calamities and advise every decision. Earth is minutes of light-time away, so live calls come from the habitat; Earth sends the brief and the Science Officer calls in the find (radio voices, scripted).
+  - **Two roles, one engine:** as the **EVA astronaut** you start in first person, calamities come without warning and CAPCOM (the habitat) advises while you make the call (Standard and Crisis scenarios; the Training walk has no random calamities, so the astronaut can trigger events there for practice); as **Mission Control** you start in the overview, can inject calamities and advise every decision. Earth is minutes of light-time away, so live calls come from the habitat; Earth sends the brief and the Science Officer calls in the find (radio voices, scripted).
   - **Sound design (synthesised, no recordings):** layered wind with random gusts and drifting stereo position, muffled through a low-pass filter because Mars's thin air carries sound weakly; breathing with varied rhythm that follows exertion and stress; a heartbeat when the margin gets tight; footsteps with left/right variation, scrapes and pebbles; suit fans, valves and servos at random intervals; visor grit and stronger wind in a dust storm; a fluttering leak hiss; caution and turn-back tones; radio with Quindar-style beeps, static and speech for CAPCOM, Science and Earth; an evolving music pad that darkens with the margin. In the airlock the room sounds fade out as the air is pumped away. Sound, Voice and Music toggles; all of it is simulation audio.
   - **Decision screen:** a calamity or a find opens a full-width card over the scene (not the sidebar): what happened, why it matters, big option cards (oxygen needed, left at base, arrival time, a plain verdict), a countdown dial that turns red in the last 5 seconds, an alert chime and a tick each second, and one +15 s extension per decision. If time runs out the suit computer takes the recommendation. 20 s for a calamity, 75 s for a find (scenario values).
   - **Editable route:** before Begin, switch between Shortest, Balanced and Safest, or click the ground to add up to 3 waypoints. Each edit re-plans with A* on the real terrain and updates the oxygen plan; waypoints become tasks with markers on the map and in 3D. A placed find is kept and re-checked against the new route.
@@ -92,7 +94,26 @@ TODO (team): names, roles and GitHub accounts of every member.
 
 Live: https://aryank1547.github.io/RedVector-Martian-Survival-Guide/
 
-TODO (team): screenshots (boxwork map with route and return map, HUD replay, Mars overview) and demo video link.
+**Demo video (no voice-over, for the immersive experience):** https://drive.google.com/file/d/1J6_9rWq683ZNv455OsF2ouPVZrWUkow3/view?usp=drive_link
+
+The video is recorded without narration so you can watch the airlock, the 3D walk, the decision screen and the educational view as they play. `docs/demo-script.md` has the talking points if you want to present it live.
+
+**On a phone:** open the live link and turn the phone sideways. In portrait, the app asks you to rotate it (with a button to continue in portrait anyway). The landscape layout is compacted for phones. Sound and the 3D walk work best with headphones and a recent phone; on older phones the 3D view uses a lower resolution to keep the frame rate up.
+
+### Screenshots
+
+| Screenshot | What it shows |
+|---|---|
+| ![airlock-door-open](docs/screenshots/01-airlock-door-open.png) | Mission start screen: the airlock in 3D, with the door opening onto the real terrain. Power-up suit starts the sound and data uplink, measured pressure and temperature at Curiosity's location (743 Pa, −82.9 to −17.3 °C). The role and scenario are chosen here. |
+| ![view-choice](<docs/screenshots/02-Simulation-or-Educational Ask.png>) | Choose how to fly the mission: the simulated 3D walk or the educational 2D map view. Same mission, same oxygen model, same decisions; only the view differs. |
+| ![3d-brief](docs/screenshots/03-3d-brief.png) | The mission brief before EVA: objective, round-trip plan on real terrain (393 m out, walk back feasible), measured pressure and temperature at Curiosity's location (743 Pa, −82.9 to −17.3 °C). The role and scenario are chosen on the start screen; the route (strategy and up to three waypoints) can still be edited before Begin. |
+| ![3d-walk](docs/screenshots/04-3d-walk.png) | 3D walk simulation (EVA astronaut view): first-person or chase view; terrain, skybox and suit audio; mission control updates in the side panel. |
+| ![3d-decision](docs/screenshots/04-3d-decision.png) | Full-screen decision card with a 20-second timer during a dust event. Recommendation computed from oxygen left and the way home. Timer has alert and tick sounds. |
+| ![educational-sections](docs/screenshots/05-educational-route-sections.png) | Educational 2D view: route sections tab showing each section's length, grade, out/back time and oxygen. Click a row to see the step-by-step calculation (grade → Tobler speed → time → oxygen). |
+| ![educational-tradeoffs](docs/screenshots/06-educational-tradeoffs.png) | Educational view: trade-offs tab. The same route, planned three ways (Shortest, Balanced, Safest). Safest walks 23 m more and uses 0.6 L more oxygen, for 5 points less steep ground. Map shows all three routes. |
+| ![educational-findings](docs/screenshots/07-educational-findings.png) | Educational view: findings tab. Route facts tagged by source (computed, model assumption, verified date, general knowledge). Includes the back-is-not-forward asymmetry and what fraction of the 4 km map is walkable. |
+| ![gale-overview](docs/screenshots/08-gale-overview.png) | Gale Crater overview map: 1.85 km cells of MOLA elevation data. Opacity slider and legend for slope, return range or THEMIS thermal inertia. |
+| ![boxwork-route](docs/screenshots/09-boxwork-route-and-return-map.png) | Boxwork map in planner mode: 10 m cells from the USGS MSL Gale 1 m DEM. Green (base), orange (destination), and yellow line (route out, 393 m). The purplish map shows the range you can walk to and still return (the point of no return). |
 
 ## 5. Install and setup
 
@@ -125,21 +146,28 @@ python tools/prepare_mars.py
 
 ## 6. AI usage disclosure
 
-TODO (team): review and confirm before submission. Full per-step detail is in `log.txt`.
+Full per-step detail is in `log.txt` (phases P0–P7, with honest "AI Generated" and "Human Did" lines for each).
 
 **Tools used**
 - **Claude Code** (Anthropic; models Sonnet 5.5, Opus 5.5 and Haiku 5.5): main coding assistant.
 - **ChatGPT** (OpenAI): research suggestions for NASA data sources, and drafting some task instructions. Every suggested dataset, URL and number was checked against the original source before use, and several were rejected (see `log.txt`).
 - **GitHub Copilot:** one testing and documentation audit of the running app.
 
-**What the AI generated, with human review:** the data pipeline and checks (`tools/`), the web app (`web/src`), tests, the deploy workflow, and drafts of `docs/qa.md` and this README.
+**What the team (Aryan) directed and decided:**
+- Chose the problem: an EVA planner that turns walking safety into a visual and interactive experience.
+- Chose the site: Curiosity's rover position in Gale Crater (public data, real landmark).
+- Set the scope: 10 m elevation, NASA photos, measured conditions, route editing, two views (3D and educational), timed decisions.
+- Verified every dataset: cross-checked NASA sources (PDS labels, Mars Trek, rover waypoints, REMS/RAD instruments).
+- Chose the model values: 25° slope limit from Curiosity's max pitch; oxygen model from published metabolic rates; Tobler's hiking function; demo reserve so the effect is visible.
+- Reviewed, tested and debugged: ran through the browser after every phase, caught bugs, reported results, and approved all changes before pushing.
+- All commits and code ownership: wrote and pushed every commit from his GitHub account.
 
-**What the team did:**
-- chose the problem, the site and the scope;
-- verified dataset facts against PDS labels and NASA pages;
-- chose the slope limit, the model assumptions and the demo reserve from the presented options;
-- ran and tested everything in the browser, and reported bugs;
-- reviewed every change, and wrote and pushed all commits.
+**What Claude Code (Anthropic) generated, under this direction:**
+- The data pipeline (`tools/prepare_*.py`, `validate.py`) to read NASA files, verify coverage, compute slope, and export web assets.
+- The web app (`web/src/`) — the sim engine (route planning, oxygen model, decision logic), the UI (mission control panel, decision overlay, educational panel), the 3D scene, and synthesised sound.
+- Tests (84 unit tests in vitest, all passing) to verify the numbers and edge cases.
+- The deploy workflow to GitHub Pages.
+- Drafts of the README, demo script and judge Q&A (`docs/qa.md`).
 
 ## Credits
 

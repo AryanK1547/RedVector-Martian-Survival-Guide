@@ -559,3 +559,83 @@ Assumed / Unverified: an earlier diagnostic probe read "no sim" for 120 s while 
 Open Issues: human review of the panel text for accuracy; commit and push; screenshots for the README.
 Commit Point: yes, suggested message: "P6j: Educational view panel (route sections, trade-offs, findings, maps and data) and fixes for the blank map and route-planning race"
 Next: P7 polish and docs.
+
+## [2026-11-15T05:15:00+05:30] P7: Polish and docs (README screenshots, demo script, Q&A updates)
+
+Phase: P7 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: prepare the README and supporting docs for submission: screenshots showing every major feature, a demo script with timings and talking points, and updated judge Q&A.
+AI Generated: docs/demo-script.md (4-minute flow with timings, what to say and show for each phase, fallback guidance if something breaks, list of likely judge questions); docs/screenshots/{01..09}.png (nine views: airlock door open, 3D brief, 3D walk and decision, educational route sections and trade-offs and findings, Gale overview and boxwork map with return range); README.md section 4 updated with screenshot table and captions; docs/qa.md section on the educational view and the back/forth asymmetry, added to "more sources we can add" list, marked USGS and ASU as already in use.
+Human Did: none in code; none needed yet (human tasks are team names, demo video, and final AI disclosure review).
+Concepts Taught: keeping a demo script as a guard against forgetting your talking points under pressure; how to describe a complex interactive page to someone who will see it for the first time.
+Decisions: demo video is a human task (this is a speaking event, not a voiceover); screenshots are at 1440x900 on headless Edge (the real live site will be viewed at whatever the judges choose; narrow-screen handling is untested but the CSS uses a 1180 px media query); all numbers in the demo script are from this session's runs and are marked for re-check on the day.
+Verified: tsc clean; vitest 84/84; build passes; nine screenshots captured end-to-end in headless Edge with no page errors: airlock rendering, 3D brief from the start screen, 3D walk with the decision overlay, educational panel with all four tabs, and two map views (Gale and boxwork).
+Assumed / Unverified: screenshots shown at resolution they were captured (1440x900, no device emulation); on the judge's screen, layout or readability may differ; neither narrow screens nor touch are tested; animations are not visible in still frames (door opening judged from code, not screenshot).
+Open Issues: human review of the README screenshots and demo script; human write the team section (names, roles, GitHub accounts); human record and link a demo video; human final review and commit and push of P7 changes; human prepare the presentation for 14:00–17:00 judges.
+Commit Point: yes, suggested message: "P7: README screenshots, demo script and judge Q&A updates"
+Next: P8 freeze prep and submission.
+
+## [2026-11-15T06:05:00+05:30] P7b: Phone support (landscape)
+
+Phase: P7 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: the human reported the app looked messy on a phone and asked for a landscape version: ask the phone to turn sideways and adapt the layout a little for a landscape screen.
+AI Generated: web/src/orient.ts (on a touch device in portrait, a "turn your phone sideways" gate with a "Go landscape and fullscreen" button that requests fullscreen and then screen.orientation.lock("landscape"), plus "Continue in portrait anyway"); web/src/mobile.css (portrait gate styles; landscape-phone layout for screens up to 520 px tall: smaller top bar, narrower side cards, compact suit display, profile strip, decision screen, educational panel, 3D controls, start screen and view choice; extra rules for under 380 px tall and under 740 px wide); web/index.html (viewport-fit=cover, theme-color, web-app meta tags); web/src/main.ts (imports, starts the gate); web/src/map.ts (map fit padding and collapsed map credits on landscape phones); web/src/sim/view.ts (Learn panel starts closed on small screens, "Learn" button reopens it); web/src/three/airlock.ts and stage3d.ts (pixel ratio capped at 1.25 on touch screens up to 940 px wide, 1.75 elsewhere); README screenshot table updated to the human's own screenshot files (02-Simulation-or-Educational Ask, 03-3d-brief, 04-3d-walk, 04-3d-decision).
+Human Did: reported the problem, chose landscape over a portrait redesign, replaced the generated screenshots in docs/screenshots with their own.
+Concepts Taught: why a wide dashboard is better rotated than squeezed (the 3D view, suit display and map each need width); why browsers only allow an orientation lock in fullscreen and iOS Safari not at all; media queries on orientation and height for landscape phones; why an animation with fill-mode "both" can silently override a CSS transform (the pop-ups were off-centre on every screen until centred with left/right and auto margins on phones).
+Decisions: a portrait skip link is always offered because people with rotation lock on would otherwise be stuck; desktop layout and rules were left unchanged (mobile.css only acts on touch-portrait or short landscape screens); the off-centre pop-ups on desktop were noticed but not changed.
+Verified: tsc clean; vitest 84/84; production build passes; headless Edge with a 390x844 touch device showed the portrait gate and the skip link; headless Edge at 844x390 showed the start screen, view choice, educational view with the suit display and decision screen laid out without overlaps (first pass), and the page logged no errors.
+Assumed / Unverified: no real phone was used. After the last round of fixes (pop-up centring, collapsed map credits, Learn panel closed by default, lower pixel ratio, map padding) the screenshots were not re-checked: the disk filled up with old test-browser profiles in the scratch folder (I deleted those, about 8 GB, and nothing in the project), and the human then asked me to stop generating screenshots. The 3D walk was not seen at 844x390 at all in a finished run. Fullscreen plus orientation lock works in Android Chrome in theory; not tested. iOS has no lock, so the gate relies on the person turning the phone. Touch drag to look around in the 3D first-person view uses the existing pointer handlers and was not tested. The route-planning start was slow in headless Edge with device emulation at 2x pixel ratio (about a minute), fast without emulation (about 12 s); it is a software-renderer effect, not seen on a real GPU.
+Open Issues: test on a real phone (Android Chrome and iPhone Safari) before judging; commit and push (the human commits); demo video and AI disclosure review still open.
+Commit Point: yes, suggested message: "P7b: landscape phone layout, rotate-to-landscape gate, lighter 3D on phones"
+Next: P8 freeze prep and submission.
+
+## [2026-11-15T06:40:00+05:30] P7c: Role picker in the 3D mission brief
+
+Phase: P7 | Tool: Claude Code | Model: claude-haiku-5-5
+Goal: the human reported that the 3D mission brief does not let them choose a role; the role was only set on the start screen, and the brief's role text could not be changed. The first view (fp or orbit) depends on the role.
+AI Generated: web/src/sim/view.ts (a two-button role picker, EVA astronaut or CAPCOM, at the top of the mission brief; an optional onRole callback in the setup); web/src/main.ts (role is now a let; choosing a role before Begin rebuilds the run with the same seed and mode, so the starting camera and the calamity rules follow the chosen role).
+Human Did: reported the missing role picker and described the brief's speed and path selections.
+Concepts Taught: rebuilding a run from the same seed keeps it reproducible when a setting changes before Begin; a callback from a panel to its owner keeps the rebuild logic in one place.
+Decisions: the role is changed only before Begin, where a rebuild loses no progress; the rebuild reuses the existing teardown (stage and audio are disposed), so nothing leaks.
+Verified: tsc clean; vitest 84/84; production build passes.
+Assumed / Unverified: the picker was not run in a browser in this session (screenshots stopped at the human's request); the starting camera change and the calamity rules after a switch are assumed from the code, not seen.
+Open Issues: test in a browser: pick CAPCOM then EVA astronaut in the 3D brief and check the camera and the calamity buttons.
+Commit Point: yes, suggested message: "P7c: role picker in the 3D mission brief (rebuilds the run before Begin)"
+Next: P8 freeze prep and submission.
+
+## [2026-11-15T06:50:00+05:30] P7d: README caption fix; role picker code reverted
+
+Phase: P7 | Tool: Claude Code | Model: claude-haiku-5-5
+Goal: the human asked for README changes only, not code. The README caption for the 3D mission brief said "Role and scenario selector", which is not true: the role is chosen on the start screen.
+AI Generated: README.md screenshot caption for the 3D brief (now says the role and scenario are chosen on the start screen, and the route can still be edited before Begin).
+Human Did: asked for README changes only and reverted the code request.
+Decisions: the role picker added in P7c was reverted in web/src/sim/view.ts and web/src/main.ts, so the code matches P7b again; the P7c entry above is superseded by this one and describes a change that is no longer in the code.
+Verified: tsc clean; vitest 84/84; production build passes after the revert.
+Assumed / Unverified: the caption's claim about route editing before Begin is taken from view.ts (strategy buttons and waypoint buttons are active only before Begin).
+Open Issues: none for code. Human decides whether a role picker in the brief is wanted later.
+Commit Point: yes, suggested message: "P7d: README brief caption: role is chosen on the start screen"
+Next: P8 freeze prep and submission.
+
+## [2026-11-15T07:00:00+05:30] P7e: README fixes after last check
+
+Phase: P7 | Tool: Claude Code | Model: claude-haiku-5-5
+Goal: the human asked for a last check of the README, the role selection and the trail, then asked for the fixes to be applied.
+AI Generated: README.md: the airlock screenshot row repaired (stray text removed, role and scenario note kept); the 3D brief row repaired (double pipe removed, sentence completed, role-on-start-screen note); two-roles paragraph now says the astronaut's calamities come without warning in Standard and Crisis scenarios and that the Training walk lets the astronaut trigger events.
+Human Did: asked for the last check and for the fixes to be applied.
+Verified: all 10 screenshot rows have the same column count; no double pipes remain; the role and trail claims were checked against web/src/start.ts, main.ts and sim/view.ts (Training scenario has calamities: false). No code changed.
+Assumed / Unverified: the screenshot files exist (checked earlier by name); the rendered README on GitHub was not viewed.
+Open Issues: docs/qa.md line about the astronaut not triggering events has the same simplification; not changed (not asked).
+Commit Point: yes, suggested message: "P7e: README table and role wording fixes"
+Next: P8 freeze prep and submission.
+
+## [2026-11-15T07:20:00+05:30] P7f: README: demo video link and phone note
+
+Phase: P7 | Tool: Claude Code | Model: claude-haiku-5-5
+Goal: the human provided the demo video (no voice-over, for an immersive experience) and asked the README to be updated with the recent changes.
+AI Generated: README.md section 4: the demo video TODO replaced by the Google Drive link, described as a video with no narration; a short "On a phone" note on rotating to landscape, the landscape layout, and the lower 3D resolution on phones.
+Human Did: recorded the video and supplied the link; asked for the README update.
+Decisions: the phone note says what the app does (rotate prompt, compact layout, lower 3D resolution) and does not claim it was tested on a real phone.
+Verified: the README now has one demo video line and one phone note; no code changed.
+Assumed / Unverified: the Drive link opens for judges (not checked from a logged-out browser); the phone behaviour was not tested on real devices (headless checks only, see P7b).
+Open Issues: the phone layout still needs a real-device test before judging; check the Drive link access setting is "anyone with the link".
+Commit Point: yes, suggested message: "P7f: README demo video link and phone note"
+Next: P8 freeze prep and submission.

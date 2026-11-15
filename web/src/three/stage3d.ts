@@ -67,7 +67,8 @@ export function createStage3D(o: Stage3DOptions): Stage3D {
 
   // ---- renderer, scene ----
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+  // Phones have 3x screens but modest GPUs: render fewer pixels there, for a smooth frame rate.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.matchMedia("(pointer: coarse) and (max-width: 940px)").matches ? 1.25 : 1.75));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   const root = document.createElement("div");

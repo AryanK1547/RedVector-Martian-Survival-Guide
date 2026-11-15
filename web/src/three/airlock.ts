@@ -50,7 +50,8 @@ export function createAirlockScene(container: HTMLElement): AirlockScene | null 
   } catch {
     return null;
   }
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+  // Phones have 3x screens but modest GPUs: render fewer pixels there, for a smooth frame rate.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.matchMedia("(pointer: coarse) and (max-width: 940px)").matches ? 1.25 : 1.75));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.92;
   const host = document.createElement("div");
