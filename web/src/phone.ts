@@ -57,6 +57,14 @@ export function setupPhonePanels(app: HTMLElement, onChange: () => void): () => 
     changed();
   });
 
+  // Pressing Begin EVA starts the walk: fold Mission control away so the walk itself is in view (its chip brings it back).
+  const onBegin = (e: Event) => {
+    if (!(e.target as HTMLElement).closest("#mc-begin") || !isPhoneLandscape()) return;
+    setHidden("right", true);
+    changed();
+  };
+  app.addEventListener("click", onBegin);
+
   // Sensible defaults when the screen changes: once a route exists the journey needs room (fold the plan card),
   // and the right-hand card is called "Mission control" during the live simulation.
   const dash = bar.querySelector<HTMLElement>("#ph-right")!;
@@ -83,6 +91,7 @@ export function setupPhonePanels(app: HTMLElement, onChange: () => void): () => 
 
   return () => {
     watch.disconnect();
+    app.removeEventListener("click", onBegin);
     bar.remove();
   };
 }

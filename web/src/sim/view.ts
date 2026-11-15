@@ -250,7 +250,22 @@ export function startSim(s: SimSetup): () => void {
       }
     });
   });
-  $<HTMLInputElement>("#mc-follow").addEventListener("change", (e) => (follow = (e.target as HTMLInputElement).checked));
+  // 2D map: the camera follows the astronaut until the person drags or zooms the map; a button gives the follow back.
+  const followEl = $<HTMLInputElement>("#mc-follow");
+  const followBtn = document.createElement("button");
+  followBtn.className = "recentre";
+  followBtn.type = "button";
+  followBtn.hidden = true;
+  followBtn.innerHTML = "&#8982; Follow astronaut";
+  s.app.append(followBtn);
+  const setFollow = (on: boolean) => {
+    follow = on;
+    followEl.checked = on;
+    followBtn.hidden = on || stage.kind !== "map";
+  };
+  followEl.addEventListener("change", () => setFollow(followEl.checked));
+  followBtn.addEventListener("click", () => setFollow(true));
+  const stopUserMove = stage.onUserMove?.(() => follow && setFollow(false));
   $<HTMLButtonElement>("#mc-exit").addEventListener("click", () => s.onExit());
   s.panel.querySelectorAll<HTMLButtonElement>(".mc-inject button").forEach((b) =>
     b.addEventListener("click", () => {
@@ -996,6 +1011,8 @@ export function startSim(s: SimSetup): () => void {
     toast.remove();
     overlay.remove();
     showLearnBtn?.remove();
+    stopUserMove?.();
+    followBtn.remove();
     s.app.classList.remove("learn-open");
     s.fx.classList.remove("on");
     s.app.classList.remove("fx-spe");

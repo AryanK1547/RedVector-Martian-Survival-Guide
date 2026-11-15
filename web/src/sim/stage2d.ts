@@ -129,6 +129,16 @@ export function createMapStage(map: MapLibreMap, terrain: Terrain, lonLat: (idx:
       cancelPick = done;
       return done;
     },
+    onUserMove(cb) {
+      // originalEvent is set only when a person moved the map, not when our own setCenter did.
+      const h = (e: { originalEvent?: unknown }) => e.originalEvent && cb();
+      map.on("dragstart", h);
+      map.on("zoomstart", h);
+      return () => {
+        map.off("dragstart", h);
+        map.off("zoomstart", h);
+      };
+    },
     dispose() {
       if (disposed) return;
       disposed = true;

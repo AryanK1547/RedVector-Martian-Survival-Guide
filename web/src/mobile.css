@@ -71,6 +71,7 @@ button, .tabs button, .seg button { touch-action: manipulation; -webkit-tap-high
   #app:not(.sim-mode) #ph-hud { display: none; }
   #app:not(.has-route):not(.sim-mode) #ph-bottom { display: none; }
   #app.mode-3d #ph-bar { left: calc(var(--pl) + 236px); }
+  .recentre { top: calc(var(--tb) + 36px); right: calc(var(--pr) + 8px); padding: 6px 10px; font-size: 11.5px; }
 
   /* a slim elevation strip, so the route stays in view */
   #bottom { left: var(--pl); right: var(--pr); bottom: 8px; height: 58px; padding: 3px 8px 2px; }
@@ -81,6 +82,10 @@ button, .tabs button, .seg button { touch-action: manipulation; -webkit-tap-high
   #app.has-route.ph-hide-bottom .maplibregl-ctrl-bottom-right { bottom: 8px; }
   .maplibregl-ctrl-attrib { font-size: 9px; }
   .maplibregl-popup-content { font-size: 11px; max-width: 220px; }
+  /* rover-location markers: just the dot (tap it for the name and photo); the name boxes hid the map */
+  .poi-label { display: none; }
+  .poi-left, .poi-right { transform: none; }
+  .poi-dot { width: 12px; height: 12px; box-shadow: 0 0 0 3px rgba(255, 122, 61, 0.3); }
 
   /* suit display (HUD) */
   .hud { bottom: 12px; min-width: 0; max-width: 56vw; padding: 6px 10px; font-size: 11px; border-radius: 10px; }
@@ -104,10 +109,11 @@ button, .tabs button, .seg button { touch-action: manipulation; -webkit-tap-high
   #app.sim-mode .maplibregl-ctrl-bottom-right, #app.sim-mode .maplibregl-ctrl-bottom-left { bottom: 78px; }
   #app.sim-mode .maplibregl-ctrl-bottom-right { right: var(--pr); }
   #app.sim-mode:not(.mode-3d) .maplibregl-ctrl-bottom-right { top: calc(var(--tb) + 6px); left: 8px; right: auto; bottom: auto; }
-  .field-note { top: calc(var(--tb) + 6px); padding: 7px 10px 9px; }
-  .field-note p { font-size: 11.5px; }
-  .task-toast { bottom: 150px; padding: 7px 12px; }
-  .task-toast small { max-width: 280px; font-size: 11px; }
+  /* pop-ups stay out of the middle of the map: notes under the panel chips, check-ins just above the suit display */
+  .field-note { top: calc(var(--tb) + 34px); padding: 6px 10px 8px; }
+  .field-note p { font-size: 11px; line-height: 1.35; }
+  .task-toast { display: none; } /* the suit display already shows the current task; the pop-up repeated the field note */
+  .task-toast small { max-width: 360px; font-size: 11px; }
 
   /* the decision screen: fits a short screen, scrolls if it must */
   .dec-overlay { top: var(--tb); padding: 8px max(10px, env(safe-area-inset-left)); align-items: flex-start; }
@@ -133,8 +139,8 @@ button, .tabs button, .seg button { touch-action: manipulation; -webkit-tap-high
   .dec-close { padding: 8px 12px; }
 
   /* centred pop-ups: the hudin animation resets transform, so centre with left/right + auto margins instead */
-  .field-note { left: 8px; right: 282px; margin-inline: auto; transform: none; width: min(440px, calc(100% - 310px)); }
-  .task-toast { left: 8px; right: 282px; margin-inline: auto; transform: none; width: max-content; max-width: calc(100% - 310px); }
+  .field-note { left: var(--pl); right: var(--pr); margin-inline: auto; transform: none; width: min(600px, calc(100% - var(--pl) - var(--pr) - 16px)); }
+  .task-toast { left: var(--pl); right: var(--pr); margin-inline: auto; transform: none; width: max-content; max-width: calc(100% - var(--pl) - var(--pr) - 16px); }
   .st-flash, .st-fact { left: 0; right: 0; margin-inline: auto; transform: none; width: max-content; max-width: 86vw; }
 
   /* map credits: small, and never wider than a third of the screen */
@@ -148,9 +154,9 @@ button, .tabs button, .seg button { touch-action: manipulation; -webkit-tap-high
   .ln-tabs { padding: 3px 8px 6px; }
   .ln-tabs button { padding: 8px 2px; }
   .ln-show { top: calc(var(--tb) + 6px); left: 8px; padding: 9px 12px; }
+  #app.learn-open .field-note { left: var(--pl); width: min(600px, calc(100% - var(--pl) - var(--pr) - 16px)); }
+  #app.learn-open .task-toast { left: var(--pl); max-width: calc(100% - var(--pl) - var(--pr) - 16px); }
   #app.learn-open.sim-mode .hud { left: calc((100% + var(--pl) - var(--pr)) / 2); width: calc(100% - var(--pl) - var(--pr) - 16px); }
-  #app.learn-open .field-note { left: 292px; width: min(440px, calc(100% - 292px - 290px)); }
-  #app.learn-open .task-toast { left: 292px; max-width: calc(100% - 292px - 290px); }
   #app.learn-open.sim-mode:not(.mode-3d) .maplibregl-ctrl-bottom-right { left: 292px; top: calc(var(--tb) + 6px); }
 
   /* 3D walk */
@@ -215,8 +221,6 @@ button, .tabs button, .seg button { touch-action: manipulation; -webkit-tap-high
   #app.ph-hide-right { --pr: 8px; }
   #app.sim-mode { --pl: 8px; }
   #app.learn-open.sim-mode { --pl: 256px; }
-  .field-note, .task-toast { right: 246px; }
-  .field-note { width: min(440px, calc(100% - 270px)); }
   .st-terminal { width: 44vw; }
   #learn { width: 240px; }
 }

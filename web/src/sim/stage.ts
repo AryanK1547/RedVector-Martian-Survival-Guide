@@ -50,6 +50,8 @@ export interface Stage {
   setOverlay(lines: StageOverlay[]): void; // teaching lines from the Educational view; [] clears
   // Wait for one click on the ground. cb(null) = outside the map or no walkable ground nearby.
   pick(cb: (hit: StagePick | null) => void): () => void;
+  // The map stage only: tell me when the person drags or pinches the map, so the camera stops following the astronaut.
+  onUserMove?(cb: () => void): () => void;
   dispose(): void;
 }
 

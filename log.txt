@@ -725,3 +725,15 @@ Assumed / Unverified: not tried on a real phone; with both side cards open at 66
 Open Issues: test on a real phone; commit before the freeze.
 Commit Point: yes (together with P8f).
 Next: human tests on the phone.
+
+## [2026-11-15T13:10:00+05:30] P8h: 2D walk on a landscape phone: draggable map, clear centre
+
+Phase: P8 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: the human reported that in the 2D walk on a landscape phone the dashboard covered the middle, the map would not move with gestures, and the rover-location markers took up space.
+AI Generated: cause of the stiff map: the 2D stage re-centred the map on the astronaut every frame while "Follow" was ticked (it is ticked by default and sits inside Mission control). Fix (web/src/sim/stage.ts, stage2d.ts, view.ts, style.css): dragging or zooming the map now switches Follow off, and a "Follow astronaut" button switches it back on (works on desktop too). Phone-only (mobile.css, phone.ts): pressing Begin EVA folds Mission control away (its chip brings it back); rover-location markers show only the dot (tap for name and photo); the field note sits under the panel chips and is wider and shorter; the task pop-up is hidden (the suit display shows the task); note and pop-up positions use the same room variables as the panels.
+Human Did: reported the problems.
+Verified: tsc clean, 84/84 tests, build OK; headless Edge at 844x390 (mouse emulation, not touch): walk starts with the map clear, a mouse drag moves the map and shows the Follow button, the button re-centres.
+Assumed / Unverified: touch gestures (pinch, two-finger) not tried on a real phone; the Follow behaviour changes the desktop 2D walk too (a drag now stops the camera following).
+Open Issues: test on a real phone; commit before the freeze.
+Commit Point: yes (with P8f, P8g).
+Next: human tests on the phone.

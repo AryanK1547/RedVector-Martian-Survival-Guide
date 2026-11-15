@@ -674,6 +674,9 @@ button.wide { width: 100%; padding: 11px; font-size: 14px; letter-spacing: 0.04e
 .srcs em { color: var(--muted); }
 .ln-show { position: absolute; z-index: 6; top: 64px; left: 12px; padding: 8px 12px; border-radius: 10px; background: rgba(12, 14, 19, 0.92); border: 1px solid var(--cyan); color: #fff; font-weight: 700; cursor: pointer; }
 .ln-show[hidden] { display: none; }
+/* 2D walk: the camera follows the astronaut until the map is dragged; this button gives the follow back */
+.recentre { position: absolute; z-index: 6; top: 64px; right: 394px; padding: 8px 12px; border-radius: 10px; background: rgba(12, 14, 19, 0.92); border: 1px solid var(--accent); color: #fff; font-weight: 700; cursor: pointer; }
+.recentre[hidden] { display: none; }
 
 /* with the panel open, everything that was centred on the map moves right of it */
 #app.learn-open.sim-mode #bottom { left: 396px; }
