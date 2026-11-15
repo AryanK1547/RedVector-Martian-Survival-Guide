@@ -737,3 +737,15 @@ Assumed / Unverified: touch gestures (pinch, two-finger) not tried on a real pho
 Open Issues: test on a real phone; commit before the freeze.
 Commit Point: yes (with P8f, P8g).
 Next: human tests on the phone.
+
+## [2026-11-15T13:25:00+05:30] P8i: desktop 2D walk: rover-location name boxes no longer cover the action
+
+Phase: P8 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: the human asked for the landscape fix for the rover-location tags on desktop too.
+AI Generated: web/src/style.css: during the live walk (app has sim-mode) the name boxes of the rover-location markers are invisible and appear when the pointer is over the dot; the dot stays. Planning view unchanged. The drag-to-move map and Follow button from P8h already apply on desktop.
+Human Did: asked for it.
+Verified: tsc clean, 84/84 tests, build OK.
+Assumed / Unverified: not looked at on a desktop screen in this block (CSS only, no layout change to the dot).
+Open Issues: commit before the freeze.
+Commit Point: yes (with P8f-P8h).
+Next: human checks the desktop 2D walk.

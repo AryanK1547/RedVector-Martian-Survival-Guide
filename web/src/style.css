@@ -132,6 +132,9 @@ label.check input { accent-color: var(--accent); }
 .poi-left { flex-direction: row-reverse; transform: translateX(calc(-50% + 7px)); }
 .poi-right { transform: translateX(calc(50% - 7px)); }
 .poi-muted .poi-dot { background: #888; box-shadow: none; animation: none; }
+/* during the live walk the name boxes would cover the action: show only the dot, and the name when the pointer is over it */
+#app.sim-mode .poi-label { opacity: 0; pointer-events: none; transition: opacity 0.15s; }
+#app.sim-mode .poi:hover .poi-label { opacity: 1; }
 @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 3px rgba(255, 122, 61, 0.35), 0 0 10px rgba(255, 122, 61, 0.7); } 50% { box-shadow: 0 0 0 9px rgba(255, 122, 61, 0), 0 0 16px rgba(255, 122, 61, 0.9); } }
 .maplibregl-popup-content { background: #1a1011; color: var(--text); font-size: 12px; border: 1px solid var(--line); border-radius: 10px; }
 .maplibregl-popup-tip { border-top-color: #1a1011 !important; border-bottom-color: #1a1011 !important; }
