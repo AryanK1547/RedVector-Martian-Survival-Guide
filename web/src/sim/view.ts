@@ -257,7 +257,32 @@ export function startSim(s: SimSetup): () => void {
   followBtn.type = "button";
   followBtn.hidden = true;
   followBtn.innerHTML = "&#8982; Follow astronaut";
-  s.app.append(followBtn);
+  // Map tools (2D walk only; the 3D walk has its own buttons): sound, voice, music, and Follow.
+  const tools = document.createElement("div");
+  tools.className = "map-tools";
+  const au = s.audio as (SimAudio & { muted?: boolean; voice?: boolean; music?: boolean; setMuted?(m: boolean): void; setVoice?(on: boolean): void; setMusic?(on: boolean): void }) | undefined;
+  if (stage.kind === "map" && au?.setMuted && au.setVoice && au.setMusic) {
+    const toggle = (html: (on: boolean) => string, get: () => boolean, set: (on: boolean) => void, title: string) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.title = title;
+      const paint = () => {
+        b.innerHTML = html(get());
+        b.classList.toggle("off", !get());
+      };
+      b.addEventListener("click", () => {
+        set(!get());
+        paint();
+      });
+      paint();
+      tools.append(b);
+    };
+    toggle((on) => (on ? "&#128266; Sound" : "&#128263; Muted"), () => !au.muted, (on) => au.setMuted!(!on), "Sound on/off");
+    toggle(() => "&#128483; Voice", () => !!au.voice, (on) => au.setVoice!(on), "Radio voice on/off");
+    toggle(() => "&#9835; Music", () => !!au.music, (on) => au.setMusic!(on), "Music on/off");
+  }
+  tools.append(followBtn);
+  if (stage.kind === "map") s.app.append(tools);
   const setFollow = (on: boolean) => {
     follow = on;
     followEl.checked = on;
@@ -1012,7 +1037,7 @@ export function startSim(s: SimSetup): () => void {
     overlay.remove();
     showLearnBtn?.remove();
     stopUserMove?.();
-    followBtn.remove();
+    tools.remove();
     s.app.classList.remove("learn-open");
     s.fx.classList.remove("on");
     s.app.classList.remove("fx-spe");

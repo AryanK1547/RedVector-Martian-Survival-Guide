@@ -749,3 +749,15 @@ Assumed / Unverified: not looked at on a desktop screen in this block (CSS only,
 Open Issues: commit before the freeze.
 Commit Point: yes (with P8f-P8h).
 Next: human checks the desktop 2D walk.
+
+## [2026-11-15T14:05:00+05:30] P8j: sound in the 2D walk
+
+Phase: P8 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: the human said the 2D walk feels less immersive because it has no sound.
+AI Generated: the suit sound (wind, breathing, heartbeat, alarms, music, radio voices; already written for the 3D walk in web/src/audio.ts) is now also started for the 2D map walk (web/src/main.ts: created for both views, and kept if 3D falls back to 2D). Footsteps in 2D follow the distance walked on screen, same rule as 3D (web/src/sim/stage2d.ts). Sound / Voice / Music on-off buttons and the Follow button sit together at the top of the 2D map (web/src/sim/view.ts, style.css, mobile.css). The field note moved a little lower so it no longer hides them.
+Human Did: reported it.
+Verified: tsc clean, 84/84 tests, build OK; headless Edge at 1280x720 and 844x390: the four buttons are present and visible, no page errors.
+Assumed / Unverified: I could not HEAR the sound (headless browser); the audio code is the same one the 3D walk uses. If the 3D walk is also quiet on the human's device, that is a separate problem (browser autoplay, volume or the Sound button) and has not been investigated.
+Open Issues: listen on the real device; commit before the freeze.
+Commit Point: yes (with P8f-P8i).
+Next: human listens and reports.

@@ -1,13 +1,17 @@
 import type { GeoJSONSource, ImageSource, Map as MapLibreMap } from "maplibre-gl";
 import { latlonToCell, type Terrain } from "../data";
 import { nearestPassable } from "../route/snap";
+import type { SuitAudio } from "../audio";
 import type { Stage, StageLine, StagePick, StagePos } from "./stage";
 
 type LonLat = [number, number];
 const empty = { type: "FeatureCollection", features: [] } as never;
 
 // The MapLibre map as a stage: the layers the simulation used to add itself.
-export function createMapStage(map: MapLibreMap, terrain: Terrain, lonLat: (idx: number) => LonLat, startCell: number): Stage {
+const METRES_PER_DEG = 59160; // Mars: 3389.5 km radius
+const WALKING = new Set(["outbound", "inbound", "detour"]);
+
+export function createMapStage(map: MapLibreMap, terrain: Terrain, lonLat: (idx: number) => LonLat, startCell: number, audio: SuitAudio | null = null): Stage {
   const c = terrain.meta.crop;
   const hazardCanvas = document.createElement("canvas");
   hazardCanvas.width = terrain.cols;
@@ -64,6 +68,10 @@ export function createMapStage(map: MapLibreMap, terrain: Terrain, lonLat: (idx:
   const noop = { setData: () => undefined } as unknown as GeoJSONSource;
   const src = (id: string) => (disposed ? noop : ((map.getSource(id) as GeoJSONSource | undefined) ?? noop));
   let cancelPick: (() => void) | null = null;
+  let lastP: LonLat | null = null;
+  let lastMs = performance.now();
+  let stride = 0;
+  let speedMs = 0;
 
   return {
     kind: "map",
@@ -90,6 +98,22 @@ export function createMapStage(map: MapLibreMap, terrain: Terrain, lonLat: (idx:
     },
     setPosition(pos, o) {
       const p = at(pos);
+      // Footsteps follow the distance walked on screen, at most about two a second (the same rule as the 3D walk).
+      const nowMs = performance.now();
+      if (lastP) {
+        const d = Math.hypot((p[0] - lastP[0]) * Math.cos((p[1] * Math.PI) / 180), p[1] - lastP[1]) * METRES_PER_DEG;
+        const dt = Math.max(0.001, (nowMs - lastMs) / 1000);
+        speedMs += (d / dt - speedMs) * 0.25;
+        if (d > 0.001 && WALKING.has(o.phase)) {
+          stride += d;
+          if (stride >= Math.max(1.5, speedMs / 2.2)) {
+            stride = 0;
+            audio?.footstep(Math.min(1, 0.55 + d * 0.02));
+          }
+        }
+      }
+      lastP = p;
+      lastMs = nowMs;
       (map.getSource("astronaut") as GeoJSONSource | undefined)?.setData({ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: p } } as never);
       if (o.follow && !o.done) map.setCenter(p);
     },

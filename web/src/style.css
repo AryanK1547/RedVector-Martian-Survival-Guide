@@ -466,7 +466,7 @@ button.wide { width: 100%; padding: 11px; font-size: 14px; letter-spacing: 0.04e
 .st-flash { animation: hudin 0.4s ease both; text-shadow: 0 0 12px rgba(255, 210, 63, 0.5); }
 
 /* ---------- field notes during the walk ---------- */
-.field-note { position: absolute; z-index: 30; top: 64px; left: 50%; transform: translateX(-50%); width: min(520px, 46vw); padding: 10px 14px 12px; border-radius: 10px; background: rgba(6, 12, 18, 0.84); border: 1px solid rgba(255, 210, 63, 0.4); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); color: #eef6fb; backdrop-filter: blur(6px); animation: hudin 0.5s ease both; }
+.field-note { position: absolute; z-index: 30; top: 104px; left: 50%; transform: translateX(-50%); width: min(520px, 46vw); padding: 10px 14px 12px; border-radius: 10px; background: rgba(6, 12, 18, 0.84); border: 1px solid rgba(255, 210, 63, 0.4); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); color: #eef6fb; backdrop-filter: blur(6px); animation: hudin 0.5s ease both; }
 .field-note .fn-head { display: flex; align-items: center; gap: 8px; font-size: 11px; }
 .field-note .fn-head span { letter-spacing: 0.18em; font-weight: 800; color: var(--gold); }
 .field-note .fn-head b { font-size: 12.5px; color: #fff; }
@@ -678,8 +678,12 @@ button.wide { width: 100%; padding: 11px; font-size: 14px; letter-spacing: 0.04e
 .ln-show { position: absolute; z-index: 6; top: 64px; left: 12px; padding: 8px 12px; border-radius: 10px; background: rgba(12, 14, 19, 0.92); border: 1px solid var(--cyan); color: #fff; font-weight: 700; cursor: pointer; }
 .ln-show[hidden] { display: none; }
 /* 2D walk: the camera follows the astronaut until the map is dragged; this button gives the follow back */
-.recentre { position: absolute; z-index: 6; top: 64px; right: 394px; padding: 8px 12px; border-radius: 10px; background: rgba(12, 14, 19, 0.92); border: 1px solid var(--accent); color: #fff; font-weight: 700; cursor: pointer; }
-.recentre[hidden] { display: none; }
+/* 2D walk buttons: sound, voice, music, and Follow */
+.map-tools { position: absolute; z-index: 6; top: 64px; right: 394px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: 460px; }
+.map-tools button { padding: 7px 11px; border-radius: 10px; background: rgba(12, 14, 19, 0.92); border: 1px solid var(--cyan); color: #fff; font-weight: 600; font-size: 12.5px; cursor: pointer; }
+.map-tools button.off { border-color: var(--line); color: var(--muted); }
+.map-tools .recentre { border-color: var(--accent); font-weight: 700; }
+.map-tools .recentre[hidden] { display: none; }
 
 /* with the panel open, everything that was centred on the map moves right of it */
 #app.learn-open.sim-mode #bottom { left: 396px; }

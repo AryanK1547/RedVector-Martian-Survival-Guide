@@ -360,22 +360,20 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
     const wp = waypoints.map((w) => ({ w, d: Math.hypot(w.lon - glon, w.lat - glat) })).filter((x) => x.d < 0.0007).sort((a, b) => a.d - b.d)[0]?.w;
     // 3D: the same simulation drawn by a Three.js scene, with sound. Falls back to the map if WebGL is unavailable.
     let stage: Stage | null = null;
-    let audio: SuitAudio | null = null;
+    // Sound (wind, breath, footsteps, radio) is part of both the 3D walk and the 2D map walk.
+    const audio: SuitAudio | null = createSuitAudio();
     if (use3d) {
       try {
         const { createStage3D } = await import("./three/stage3d");
-        audio = createSuitAudio();
         const st = createStage3D({ container: app, terrain, base: cur.base, goal: cur.goal, objectiveName: wp?.name ?? "Destination", imageUrl: `${region.base}ctx.png`, audio, initialMode: role === "astronaut" ? "fp" : "orbit" });
         await st.ready;
         app.classList.add("mode-3d");
         stage = st;
       } catch (e) {
-        audio?.dispose();
-        audio = null;
         statusEl.textContent = `3D is not available here (${String(e).slice(0, 90)}). Using the 2D map.`;
       }
     }
-    stage ??= createMapStage(map, terrain, routing.lonLat, cur.base);
+    stage ??= createMapStage(map, terrain, routing.lonLat, cur.base, audio);
     const is3d = stage.kind === "3d";
     stopSim = startSim({
       stage, audio: audio ?? undefined, terrain, ...cur,
