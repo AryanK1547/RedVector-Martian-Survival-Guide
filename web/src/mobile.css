@@ -77,6 +77,8 @@ button, .tabs button, .seg button { touch-action: manipulation; -webkit-tap-high
   /* a slim elevation strip, so the route stays in view */
   #bottom { left: var(--pl); right: var(--pr); bottom: 8px; height: 58px; padding: 3px 8px 2px; }
   #bottom canvas { height: 43px; }
+  #app.sim-mode #bottom { left: var(--pl); right: var(--pr); bottom: 8px; height: 58px; padding: 3px 8px 2px; }
+  #app.sim-mode #bottom canvas { height: 43px; }
   .strip-label { font-size: 8.5px; line-height: 1.1; }
   .maplibregl-ctrl-bottom-right { right: var(--pr); }
   #app.has-route .maplibregl-ctrl-bottom-right { bottom: 74px; }

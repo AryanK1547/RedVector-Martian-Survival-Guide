@@ -417,7 +417,12 @@ function createRadio(ctx: AudioContext, out: AudioNode) {
   const staticG = k.gain(0);
   k.loop("white").connect(k.filter("highpass", 500)).connect(k.filter("lowpass", 3200)).connect(staticG).connect(out);
   const speakOk = typeof speechSynthesis !== "undefined";
-  const voices = () => (speakOk ? speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith("en")) : []);
+  // English voices installed on the device first: online ("natural") voices fail silently when the network is slow or blocked.
+  const voices = () => {
+    const en = speakOk ? speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith("en")) : [];
+    const local = en.filter((v) => v.localService);
+    return local.length ? local : en;
+  };
   // Different speakers get different voices where the browser has them.
   const VOICE: Record<Speaker, { idx: number; pitch: number; rate: number }> = {
     capcom: { idx: 0, pitch: 0.85, rate: 1.04 },
@@ -436,23 +441,38 @@ function createRadio(ctx: AudioContext, out: AudioNode) {
       quindar(t + 0.06, true);
       if (urgent) k.tone(1900, t + 0.34, 0.06, 0.035);
       if (!speakOk || !prefs.voice || prefs.muted) return;
-      const u = new SpeechSynthesisUtterance(text);
       const v = VOICE[who];
-      const list = voices();
-      if (list.length) u.voice = list[v.idx % list.length];
-      u.pitch = v.pitch;
-      u.rate = v.rate;
-      u.volume = 0.9;
-      u.onstart = () => staticG.gain.setTargetAtTime(0.012, ctx.currentTime, 0.05);
-      u.onend = () => {
-        staticG.gain.setTargetAtTime(0, ctx.currentTime, 0.05);
-        if (k.alive) {
-          squelch(ctx.currentTime);
-          quindar(ctx.currentTime + 0.04, false);
-        }
+      const build = (pickVoice: boolean) => {
+        const u = new SpeechSynthesisUtterance(text);
+        const list = voices();
+        if (pickVoice && list.length) u.voice = list[v.idx % list.length];
+        u.pitch = v.pitch;
+        u.rate = v.rate;
+        u.volume = 0.9;
+        u.onstart = () => staticG.gain.setTargetAtTime(0.012, ctx.currentTime, 0.05);
+        u.onend = () => {
+          staticG.gain.setTargetAtTime(0, ctx.currentTime, 0.05);
+          if (k.alive) {
+            squelch(ctx.currentTime);
+            quindar(ctx.currentTime + 0.04, false);
+          }
+        };
+        return u;
       };
+      const u = build(true);
+      // If the chosen voice cannot speak (an online voice with no network, say), say it again with the browser's default voice.
+      u.onerror = (e) => {
+        if (pickedRetry || e.error === "canceled" || e.error === "interrupted" || !k.alive || prefs.muted) return;
+        pickedRetry = true;
+        speechSynthesis.speak(build(false));
+      };
+      let pickedRetry = false;
       if (urgent) speechSynthesis.cancel();
-      window.setTimeout(() => k.alive && !prefs.muted && speechSynthesis.speak(u), 360);
+      window.setTimeout(() => {
+        if (!k.alive || prefs.muted) return;
+        speechSynthesis.resume(); // Chrome can leave the speech queue paused after a cancel
+        speechSynthesis.speak(u);
+      }, 360);
     },
     stop() {
       k.stop();

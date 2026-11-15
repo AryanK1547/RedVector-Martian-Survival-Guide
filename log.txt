@@ -761,3 +761,27 @@ Assumed / Unverified: I could not HEAR the sound (headless browser); the audio c
 Open Issues: listen on the real device; commit before the freeze.
 Commit Point: yes (with P8f-P8i).
 Next: human listens and reports.
+
+## [2026-11-15T14:30:00+05:30] P8k: radio voice (CAPCOM) more reliable
+
+Phase: P8 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: the human heard no CAPCOM voice in the 2D walk.
+AI Generated: probe in headless Edge (2D walk, 1280x720): the radio asked the browser to speak both opening lines and the AudioContext was "running", so the 2D walk does reach the voice code. Hardening in web/src/audio.ts (shared by 2D and 3D): prefer English voices installed on the device (online voices fail silently without network); if a voice errors, say the line again with the browser's default voice; resume the speech queue before speaking (Chrome can leave it paused after a cancel).
+Human Did: reported it.
+Verified: tsc clean, 84/84 tests, build OK; speech requests and audio state seen in the probe.
+Assumed / Unverified: I cannot hear the result. The real cause on the human's device is not confirmed (candidates: no local English voice, online voice offline, Voice button off, tab muted, system volume). The opening lines play one after the other: the long Earth message first, then CAPCOM several seconds later.
+Open Issues: human listens and reports the browser and OS if still silent.
+Commit Point: yes (with P8f-P8j).
+Next: human tests.
+
+## [2026-11-15T14:50:00+05:30] P8l: elevation strip shows with the suit display during the walk (phone)
+
+Phase: P8 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: the human turned on Suit and Elevation together in the walk and saw only the suit display.
+AI Generated: cause found by measuring the boxes in headless Edge: the desktop rule for the strip during the walk (left 12 px, 94 px tall) outranked the phone rule, so the strip was 94 px tall and sat under the suit display. Fix in web/src/mobile.css: phone sizing for the strip during the walk (58 px, between the side panels), so the suit display rides above it.
+Human Did: reported it.
+Verified: tsc clean, build OK; headless Edge 844x390, 2D and 3D walk: after tapping Elevation the strip is at y 324-382 and the suit display ends at y 316, no overlap; screenshot checked for 2D.
+Assumed / Unverified: 3D checked by box measurements only, not by eye; not tried on a real phone. The strip starts folded away during the walk (Elevation chip shows it).
+Open Issues: commit before the freeze.
+Commit Point: yes (with P8f-P8k).
+Next: human tests.
