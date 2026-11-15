@@ -13,6 +13,7 @@ import { MISSION, showStart, type Preset, type Role } from "./start";
 import { setupRouting, strategyNames, type RouteResult } from "./ui";
 import { loadWaypoints, type Waypoint } from "./waypoints";
 import { setupOrientationGate } from "./orient";
+import { isPhoneLandscape, panelInsets, setupPhonePanels } from "./phone";
 import "./style.css";
 import "./mobile.css"; // after style.css: phone overrides
 
@@ -277,8 +278,25 @@ async function showRegion(app: HTMLElement, region: Region, waypoints: Waypoint[
   );
   const onResize = () => last && drawProfile(profile, last.steps, eva ? last.verdict.pointOfNoReturn : null);
   window.addEventListener("resize", onResize);
+  // Landscape phone: fold-away panels, and keep the whole journey in the room they leave.
+  const fitJourney = () => {
+    const cur = routing.current();
+    if (!isPhoneLandscape() || app.classList.contains("sim-mode") || !cur) return;
+    let w = 180, s = 90, e = -180, n = -90;
+    const stride = Math.max(1, Math.floor(cur.cells.length / 200));
+    for (let i = 0; i < cur.cells.length; i += stride) {
+      const [lon, lat] = routing.lonLat(cur.cells[i]);
+      w = Math.min(w, lon); e = Math.max(e, lon); s = Math.min(s, lat); n = Math.max(n, lat);
+    }
+    const [lon0, lat0] = routing.lonLat(cur.cells[cur.cells.length - 1]);
+    w = Math.min(w, lon0); e = Math.max(e, lon0); s = Math.min(s, lat0); n = Math.max(n, lat0);
+    const inset = panelInsets(app);
+    map.fitBounds([[w, s], [e, n]], { padding: { top: 56, bottom: inset.bottom, left: inset.left, right: inset.right }, maxZoom: 17.5, duration: 450 });
+  };
+  const stopPhonePanels = setupPhonePanels(app, fitJourney);
   teardown = () => {
     stopSim?.();
+    stopPhonePanels();
     window.removeEventListener("resize", onResize);
     routing.stop();
     client.dispose();

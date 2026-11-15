@@ -639,3 +639,89 @@ Assumed / Unverified: the Drive link opens for judges (not checked from a logged
 Open Issues: the phone layout still needs a real-device test before judging; check the Drive link access setting is "anyone with the link".
 Commit Point: yes, suggested message: "P7f: README demo video link and phone note"
 Next: P8 freeze prep and submission.
+
+## [2026-11-15T07:40:00+05:30] P8: Freeze prep checks (read-only)
+
+Phase: P8 | Tool: Claude Code | Model: claude-haiku-5-5
+Goal: AGENTS.md §7 P8 (freeze prep): final deploy check, final push by 13:45, submit the link. This entry records the checks done before the human's push.
+AI Generated: none (checks only; no files changed).
+Human Did: pending: commit and push (CLAUDE.md: the human commits), submit the live link on site.
+Verified: no TODO left in README.md or docs/*.md; no attribution lines in the repo (the only matches are the rules in AGENTS.md and CLAUDE.md); live site https://aryank1547.github.io/RedVector-Martian-Survival-Guide/ returns HTTP 200 (old deploy: it does not yet include the P7b phone changes until the human pushes); tsc clean; vitest 84/84; production build passes.
+Assumed / Unverified: the live site content matches the last push, not the local working tree; the Drive video link access was not checked from a logged-out browser.
+Open Issues: commit and push by 13:45; after the GitHub Pages deploy, open the live link and check the start screen and one 3D walk; re-test on a real phone; submit the link on site.
+Commit Point: yes, suggested message: "P8: freeze prep: README and phone layout" (or split by P7b, P7d, P7e, P7f messages if preferred)
+Next: human push, live check, submission.
+
+## [2026-11-15T08:10:00+05:30] P8b: Presentation deck
+
+Phase: P8 | Tool: Claude Code (Slides artifact) | Model: claude-sonnet-5-5
+Goal: the human asked for the presentation for judging (14:00-17:00 live demo and Q&A).
+AI Generated: a 12-slide deck outside the repo (claude.ai artifact, link given in chat): cover, problem, what it does, real data, how it works, where it is safe, what caution costs, rehearse (decision screen), two views, under the hood, limits, close; speaker notes on every slide; the human's own screenshots (airlock, return-range map, decision card, 3D walk, educational sections) uploaded into it. No file in the repository was changed.
+Human Did: supplied the screenshots and the demo video link; chose to present the demo live on the site and use the deck around it.
+Decisions: dark Mars palette with orange and cyan accents, Space Grotesk and Inter; the live demo happens on the site after slide 5 (see docs/demo-script.md); every number on the slides comes from the README or from runs logged earlier in this file (393 m, 17.8 min out, 12.5 min back, Safest +23 m, +0.6 L, 5 points less steep ground, 743 Pa, 84 tests); the limits slide repeats the README's assumptions and AI disclosure.
+Verified: numbers checked against README, docs/demo-script.md and log.txt; calamity names checked against web/src/sim/engine.ts.
+Assumed / Unverified: layout was not previewed after publishing; slides 3, 6 and 4 are the tightest and need a look; the 17.8 / 12.5 minute and +23 m / +0.6 L figures were seen in the app on 15 Nov and must be re-checked on the day; the phone note was not tested on a real phone.
+Open Issues: human reads the deck once and fixes anything that looks off; export a .pptx or PDF copy as a backup before 14:00.
+Commit Point: no (nothing in the repo changed).
+Next: human dry run of the 4-minute demo with the deck, then submit.
+
+## [2026-11-15T09:00:00+05:30] P8c: Space Apps submission rules check, 7-slide demo deck, form text
+
+Phase: P8 | Tool: Claude Code (Slides artifact) | Model: claude-opus-5-5
+Goal: the human pasted the NASA Space Apps Project Submission Guide. Check the submission against it.
+AI Generated: a second deck outside the repo, 7 slides (the guide's limit for a slide demo, title and intro included): title with challenge, team and member; the challenge; user experience; NASA data; how it works; decisions under pressure; next steps, limits and links. Every slide's footer names the team, the member and the challenge. Draft text for each submission form field (in chat). No repository file changed.
+Human Did: supplied the guide; must export the 7-slide deck as PDF, host it publicly, fill and submit the form.
+Decisions: the 12-slide deck stays for the live local judging only; the demo field gets the 7-slide deck because a video must be 30 s or less and the existing demo video's length is not known here; no Space Agency Partner data was used, and the form text says so.
+Verified: data URLs in the form text copied from tools/*.py; challenge name from README and AGENTS.md.
+Assumed / Unverified: slide layouts not previewed; the demo video length not checked; field length limits on the form not known.
+Open Issues: export PDF and set the link to public; test all links in a private window; submit before the local deadline.
+Commit Point: no.
+Next: human fills the form and submits.
+
+## [2026-11-15T09:30:00+05:30] P8d: project page text rewritten in the shape of a past winner's page
+
+Phase: P8 | Tool: Claude Code | Model: claude-opus-5-5
+Goal: the human pasted the About page of a 2025 Space Apps winner. Restructure our project page text to match its strengths.
+AI Generated: a longer project page draft (in chat): summary, detailed description with numbered subsections (what it does, how it works with the formulas, a worked case study of the standard mission, crisis decisions, how we checked the data, benefits, roadmap), where to place each screenshot, SI use, NASA data with purposes, other references. No repository file changed.
+Human Did: supplied the example page; must paste the text and upload the screenshots into the form.
+Decisions: copied the winner's structure (explicit formulas, worked example, verification, roadmap, inline images, data listed with purpose); did not copy unverifiable figures, a business model (not asked for by this challenge) or a thin AI statement.
+Verified: calamity values from web/src/sim/engine.ts SCENARIO; screenshot names from docs/screenshots; mission numbers from earlier verified runs.
+Assumed / Unverified: form field length limits not known.
+Open Issues: same as P8c.
+Commit Point: no.
+Next: human fills the form and submits.
+
+## [2026-11-15T10:00:00+05:30] P8e: 7-slide deck review fixes
+
+Phase: P8 | Tool: Claude Code (Slides artifact) | Model: claude-opus-5-5
+Goal: apply the human's review fixes to the 7-slide demo deck.
+AI Generated: slide 5 marks the assumptions (25 deg rover limit, Tobler Earth-calibrated, 234 kcal/h assumed) and says "L of O2 from a 45 L model reserve"; slide 3 names Curiosity's two science stops (PLACES) and the science time the oxygen allows; slide 4 labels REMS/RAD as context, not in the verdict, with RAD giving a per-walk dose estimate; slide 6 says emergency strengths are training values. Republished. No repository file changed.
+Human Did: wrote the review list.
+Verified: REMS/RAD feed no verdict (conditions.ts, stats.ts: RAD x walking time = dose shown); science stops from waypoints.csv (sols 4598, 4602); 743 Pa, -82.9/-17.3 C, 167.9 uGy/day equal web/public/data/conditions.json, which names the exact PDS files (REMS MODRDR RME_805631193..., RAD RDR RAD_RDR_2025_193_23_42_4598).
+Assumed / Unverified: the raw PDS files were not re-downloaded in this block; layouts not previewed.
+Commit Point: no.
+Next: export PDF, submit.
+
+## [2026-11-15T11:55:00+05:30] P8f: landscape phone, fold-away panels so the journey is visible
+
+Phase: P8 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: on a landscape phone the plan card, dashboard card and elevation strip covered the map, so the route could not be seen.
+AI Generated: web/src/phone.ts (new): four on/off chips (Plan, Dashboard, Elevation, Suit) that fold each panel away, sensible defaults (plan card folds once a route exists), and panelInsets(); web/src/main.ts: fitJourney() re-fits the map to the whole route inside the room the open panels leave, on a landscape phone only (not during the simulation); web/src/mobile.css: --pl/--pr room variables, slimmer elevation strip (50 px, was 78), suit display without its header row and sitting lower, chip bar styles. Desktop layout unchanged (all new rules sit inside the landscape-phone media query).
+Human Did: reported the problem.
+Verified: tsc clean, 84/84 tests, build OK.
+Assumed / Unverified: NOT checked visually and NOT tried on a real phone; chip positions on a 640 px wide screen and with the learn panel open are untested.
+Open Issues: test on a real phone; commit before the freeze.
+Commit Point: yes. Suggested message: "Phone landscape: fold-away panels and route re-fit so the journey stays visible"
+Next: human tests on the phone.
+
+## [2026-11-15T12:30:00+05:30] P8g: landscape phone, suit display no longer overlaps the elevation strip
+
+Phase: P8 | Tool: Claude Code | Model: claude-sonnet-5-5
+Goal: the human reported two panels overlapping when shown together in landscape.
+AI Generated: found by emulating an 844x390 and a 667x375 screen: in the live walk the suit display (HUD) sat on top of the elevation strip. Fix in web/src/mobile.css: the suit display now rides above the strip whenever the strip is showing (:has()); the strip is 58 px tall; the HUD keeps its value text on one line when the Learn panel is open; the Elevation chip is also offered during the live walk, where the strip starts folded away (web/src/phone.ts).
+Human Did: reported the overlap.
+Verified: tsc clean, 84/84 tests, build OK; headless Edge screenshots (emulated, no touch, software rendering) of planning at 844x390 and 667x375, and of the 2D and 3D live walk at 844x390 with and without the Learn panel. Screenshots are scratch files, not in the repo.
+Assumed / Unverified: not tried on a real phone; with both side cards open at 667 px the map is a narrow strip (the chips fold them away).
+Open Issues: test on a real phone; commit before the freeze.
+Commit Point: yes (together with P8f).
+Next: human tests on the phone.
